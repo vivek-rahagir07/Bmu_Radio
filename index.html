@@ -777,7 +777,7 @@
                                     </span>
                                     <span className="text-[10px] text-slate-400 flex items-center gap-1">
                                         <Calendar size={10} />
-                                        {new Date(post.createdAt?.seconds * 1000).toLocaleDateString()}
+                                        {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Just Now'}
                                     </span>
                                  </div>
                                  
@@ -952,7 +952,7 @@
                       </p>
                       <div className="flex items-center gap-2">
                         <p className="text-xs text-slate-500 font-medium">
-                          {new Date(post.createdAt?.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' })}
+                          {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Just Now'}
                         </p>
                         {isLive && (
                             <span className="flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-1.5 rounded animate-pulse">
@@ -1000,9 +1000,9 @@
                 <div className="flex items-center gap-6 mt-5 pt-4 border-t border-slate-50">
                   <button 
                     onClick={handleLike}
-                    className={`flex items-center gap-2 text-sm font-medium transition-colors ${liked ? 'text-pink-600' : 'text-slate-400 hover:text-pink-500'}`}
+                    className={`flex items-center gap-2 text-sm font-medium transition-colors ${isLiked ? 'text-pink-600' : 'text-slate-400 hover:text-pink-500'}`}
                   >
-                    <Heart size={18} className={`${liked ? 'fill-current animate-[ping_0.5s_cubic-bezier(0,0,0.2,1)_1]' : ''}`} /> 
+                    <Heart size={18} className={`${isLiked ? 'fill-current animate-[ping_0.5s_cubic-bezier(0,0,0.2,1)_1]' : ''}`} /> 
                     <span>{likeCount}</span>
                   </button>
                   <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors text-sm font-medium group/action">
