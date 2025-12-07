@@ -24,7 +24,8 @@
             "firebase/app": "https://www.gstatic.com/firebasejs/10.7.1/firebase-app.js",
             "firebase/auth": "https://www.gstatic.com/firebasejs/10.7.1/firebase-auth.js",
             "firebase/firestore": "https://www.gstatic.com/firebasejs/10.7.1/firebase-firestore.js",
-            "firebase/analytics": "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js"
+            "firebase/analytics": "https://www.gstatic.com/firebasejs/10.7.1/firebase-analytics.js",
+            "firebase/storage": "https://www.gstatic.com/firebasejs/10.7.1/firebase-storage.js"
         }
     }
     </script>
@@ -124,9 +125,19 @@
           Maximize2, ExternalLink, ShieldAlert, Flag, Copy, Phone,
           UserCircle, ListMusic, PlusCircle, Briefcase, GraduationCap, Lock, Mail, Camera, AlertCircle, BellRing
         } from 'lucide-react';
+
         import { initializeApp } from 'firebase/app';
-        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, updateProfile, signOut } from 'firebase/auth';
-        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, doc, updateDoc, deleteDoc, increment, where } from 'firebase/firestore';
+        import { 
+          getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, 
+          onAuthStateChanged, updateProfile, signOut 
+        } from 'firebase/auth';
+        import { 
+          getFirestore, collection, addDoc, onSnapshot, serverTimestamp, 
+          query, orderBy, doc, updateDoc, deleteDoc, increment, where 
+        } from 'firebase/firestore';
+        import {
+          getStorage, ref, uploadBytesResumable, getDownloadURL
+        } from 'firebase/storage';
 
         // --- Firebase Config ---
         const firebaseConfig = {
@@ -134,7 +145,7 @@
           authDomain: "bmuradio.firebaseapp.com",
           databaseURL: "https://bmuradio-default-rtdb.firebaseio.com",
           projectId: "bmuradio",
-          storageBucket: "bmuradio.firebasestorage.app",
+          storageBucket: "bmuradio.appspot.com",
           messagingSenderId: "230545998240",
           appId: "1:230545998240:web:c1832311a2f066cb7b24c5",
           measurementId: "G-51N1VLP1DY"
@@ -143,6 +154,7 @@
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
+        const storage = getStorage(app);
 
         // --- Mock Data for Guest Mode ---
         const MOCK_POSTS = [
@@ -155,7 +167,7 @@
                 broadcastType: 'live',
                 createdAt: { seconds: Date.now() / 1000 },
                 likes: 42,
-                mediaUrl: '' // No media for demo
+                mediaUrl: '' 
             },
             {
                 id: 'mock2',
@@ -171,12 +183,11 @@
         ];
 
         const SCHEDULE_DATA = [
-           
             { id: 4, title: "Student Council Updates", host: "Pres. Office", time: "04:00 PM", type: "News", live: false },
             { id: 5, title: "Late Night Confessions", host: "Anonymous", time: "10:00 PM", type: "Buzz", live: false },
         ];
 
-        // --- Components Defined in Order ---
+        // --- Components ---
 
         const Toast = ({ message, onClose }) => {
             useEffect(() => {
@@ -391,10 +402,8 @@
                 const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
                 scene.add(particlesMesh);
 
-                let count = 0;
                 const animate = () => {
                     requestAnimationFrame(animate);
-                    count += 0.05;
                     const now = Date.now() * 0.001;
                     const positions = plane.geometry.attributes.position.array;
                     
@@ -541,10 +550,15 @@
                                 </button>
                             </form>
                             
-                        
                             <div className="mt-6 text-center">
                                 <button onClick={() => setIsSignUp(!isSignUp)} className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4">
                                     {isSignUp ? "Already have an account? Login" : "New to campus? Create Profile"}
+                                </button>
+                            </div>
+
+                            <div className="mt-4 text-center">
+                                <button onClick={handleGuestLogin} className="text-[11px] text-slate-500 hover:text-slate-200 transition-colors">
+                                    Or continue as guest (view only)
                                 </button>
                             </div>
                         </div>
@@ -593,8 +607,8 @@
             const [query, setQuery] = useState('');
             const filtered = posts.filter(p => 
                 p.title.toLowerCase().includes(query.toLowerCase()) || 
-                p.authorName.toLowerCase().includes(query.toLowerCase()) ||
-                p.category.toLowerCase().includes(query.toLowerCase())
+                p.authorName?.toLowerCase().includes(query.toLowerCase()) ||
+                p.category?.toLowerCase().includes(query.toLowerCase())
             );
 
             return (
@@ -622,19 +636,23 @@
                             filtered.map((post, index) => (
                                 <div key={post.id} className="glass-card rounded-xl p-3 flex gap-3 items-center group animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
                                     <div 
-                                        onClick={() => onPlay({ title: post.title, artist: post.authorName, url: post.mediaUrl })}
+                                        onClick={() => post.mediaUrl && onPlay({ title: post.title, artist: post.authorName, url: post.mediaUrl })}
                                         className="w-16 h-16 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer relative overflow-hidden group-hover:ring-2 ring-red-500/50 transition-all"
                                     >
                                         {post.authorPhoto ? <img src={post.authorPhoto} className="w-full h-full object-cover opacity-60" /> : <Radio size={24} className="text-slate-500" />}
-                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
-                                            <Play size={20} className="text-white fill-current" />
-                                        </div>
+                                        {post.mediaUrl && (
+                                            <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Play size={20} className="text-white fill-current" />
+                                            </div>
+                                        )}
                                     </div>
                                     <div className="flex-1 min-w-0">
                                         <h4 className="font-bold text-white text-sm truncate">{post.title}</h4>
                                         <p className="text-xs text-slate-400 truncate">{post.isAnonymous ? 'Anonymous' : post.authorName}</p>
                                         <div className="flex items-center gap-2 mt-1">
-                                            <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{post.category}</span>
+                                            {post.category && (
+                                                <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{post.category}</span>
+                                            )}
                                         </div>
                                     </div>
                                 </div>
@@ -710,7 +728,7 @@
                                         <span className="text-sm font-bold text-slate-200">
                                             {post.isAnonymous ? 'Anonymous' : post.authorName?.split('_')[0]}
                                         </span>
-                                        {!post.isAnonymous && post.likes > 5 && (
+                                        {!post.isAnonymous && (post.likes || 0) > 5 && (
                                             <CheckCircle size={12} className="text-blue-400 fill-current animate-pulse" />
                                         )}
                                     </div>
@@ -764,7 +782,8 @@
                                     <video src={post.mediaUrl} controls className="w-full h-full object-cover" />
                                 </div>
                             ) : (
-                                <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-white/5 aspect-[3/1] group hover:border-white/10 transition-colors flex items-center justify-center cursor-pointer"
+                                <div
+                                    className="relative rounded-xl overflow-hidden bg-slate-950 border border-white/5 aspect-[3/1] group hover:border-white/10 transition-colors flex items-center justify-center cursor-pointer"
                                     onClick={() => onPlay({ title: post.title, artist: post.authorName, url: post.mediaUrl })}
                                 >
                                     <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
@@ -801,7 +820,7 @@
         };
 
         const MiniPlayer = ({ currentTrack, isPlaying, togglePlay, closePlayer }) => {
-            if (!currentTrack) return null;
+            if (!currentTrack || !currentTrack.url) return null;
             return (
                 <div className="fixed bottom-[70px] left-2 right-2 z-[60] animate-slide-up">
                     <div className="glass-panel bg-slate-900/90 rounded-2xl p-3 flex items-center gap-3 shadow-2xl border-t border-white/10 backdrop-blur-xl">
@@ -844,7 +863,6 @@
             useEffect(() => {
                 if (!post) return;
                 
-                // Guest mode: Use mock comments
                 if (user.uid === 'guest') {
                     setComments([{ id: 'c1', text: 'Nice track!', authorName: 'Guest_User', createdAt: { seconds: Date.now() / 1000 }}]);
                     return;
@@ -989,6 +1007,206 @@
             );
         };
 
+        // --- NEW: CreatePostModal with Firebase Storage v10 ---
+        const CreatePostModal = ({ user, onClose, onCreated }) => {
+            const [title, setTitle] = useState('');
+            const [description, setDescription] = useState('');
+            const [category, setCategory] = useState('music');
+            const [file, setFile] = useState(null);
+            const [previewUrl, setPreviewUrl] = useState(null);
+            const [isAnonymous, setIsAnonymous] = useState(false);
+            const [uploading, setUploading] = useState(false);
+            const [progress, setProgress] = useState(0);
+
+            const handleFileChange = (e) => {
+                const f = e.target.files[0];
+                if (!f) return;
+                setFile(f);
+                setPreviewUrl(URL.createObjectURL(f));
+            };
+
+            const handleSubmit = async (e) => {
+                e?.preventDefault();
+                if (!title.trim()) {
+                    alert('Please add a title.');
+                    return;
+                }
+
+                setUploading(true);
+
+                let mediaUrl = '';
+                let mediaType = null;
+
+                try {
+                    if (file) {
+                        mediaType = file.type.startsWith('video') ? 'video' : 'audio';
+                        const storagePath = `broadcasts/${user.uid}/${Date.now()}_${file.name}`;
+                        const storageRef = ref(storage, storagePath);
+                        const uploadTask = uploadBytesResumable(storageRef, file);
+
+                        await new Promise((resolve, reject) => {
+                            uploadTask.on('state_changed', (snapshot) => {
+                                const pct = (snapshot.bytesTransferred / snapshot.totalBytes) * 100;
+                                setProgress(Math.round(pct));
+                            }, reject, resolve);
+                        });
+
+                        mediaUrl = await getDownloadURL(uploadTask.snapshot.ref);
+                    }
+
+                    const docData = {
+                        title: title.trim(),
+                        description: description.trim(),
+                        category,
+                        mediaUrl: mediaUrl || '',
+                        mediaType: mediaType || '',
+                        authorId: user.uid,
+                        authorName: user.displayName,
+                        authorPhoto: user.photoURL || null,
+                        likes: 0,
+                        isAnonymous,
+                        broadcastType: 'recorded',
+                        createdAt: serverTimestamp(),
+                    };
+
+                    await addDoc(collection(db, 'bmu_radio_posts'), docData);
+
+                    setUploading(false);
+                    onCreated && onCreated();
+                    onClose();
+                } catch (err) {
+                    console.error(err);
+                    alert('Error creating broadcast: ' + err.message);
+                    setUploading(false);
+                }
+            };
+
+            return (
+                <div className="fixed inset-0 z-[90] flex items-end sm:items-center justify-center sm:p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm" onClick={onClose}></div>
+                    <div className="bg-[#020617] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl relative z-10 animate-slide-up">
+                        <div className="flex items-center justify-between p-4 border-b border-white/5 bg-slate-900/60 rounded-t-3xl">
+                            <div>
+                                <h3 className="text-white font-bold text-lg">New Broadcast</h3>
+                                <p className="text-xs text-slate-400">Share music, podcasts, or campus buzz.</p>
+                            </div>
+                            <button onClick={onClose} className="p-2 rounded-full hover:bg-white/10 text-slate-400 hover:text-white">
+                                <X size={18} />
+                            </button>
+                        </div>
+
+                        <form onSubmit={handleSubmit} className="p-4 space-y-4 max-h-[75vh] overflow-y-auto scrollbar-hide">
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wide">Title</label>
+                                <input
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-red-500"
+                                    placeholder="What are you broadcasting?"
+                                    value={title}
+                                    onChange={(e) => setTitle(e.target.value)}
+                                />
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wide">Description</label>
+                                <textarea
+                                    rows="3"
+                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-red-500 resize-none"
+                                    placeholder="Tell listeners what this is about..."
+                                    value={description}
+                                    onChange={(e) => setDescription(e.target.value)}
+                                />
+                            </div>
+
+                            <div className="grid grid-cols-2 gap-3">
+                                <div>
+                                    <label className="block text-xs font-bold text-slate-400 mb-1 uppercase tracking-wide">Category</label>
+                                    <select
+                                        className="w-full bg-slate-900 border border-slate-700 rounded-xl px-3 py-2.5 text-sm text-white focus:outline-none focus:border-red-500"
+                                        value={category}
+                                        onChange={(e) => setCategory(e.target.value)}
+                                    >
+                                        <option value="music">Music</option>
+                                        <option value="podcast">Podcast</option>
+                                        <option value="buzz">Buzz</option>
+                                        <option value="skills">Skills</option>
+                                    </select>
+                                </div>
+                                <div className="flex items-center gap-2 mt-5">
+                                    <input
+                                        id="anon"
+                                        type="checkbox"
+                                        checked={isAnonymous}
+                                        onChange={(e) => setIsAnonymous(e.target.checked)}
+                                        className="w-4 h-4 rounded border-slate-600 bg-slate-900"
+                                    />
+                                    <label htmlFor="anon" className="text-xs text-slate-400 flex items-center gap-1">
+                                        <Ghost size={14} /> Post anonymously
+                                    </label>
+                                </div>
+                            </div>
+
+                            <div>
+                                <label className="block text-xs font-bold text-slate-400 mb-2 uppercase tracking-wide">Media (optional)</label>
+                                <div className="flex flex-col gap-3">
+                                    <label className="flex items-center justify-between bg-slate-900 border border-dashed border-slate-700 rounded-xl px-3 py-2.5 text-sm text-slate-400 cursor-pointer hover:border-red-500 hover:bg-slate-900/80">
+                                        <div className="flex items-center gap-2">
+                                            <Upload size={16} />
+                                            <span>{file ? file.name : 'Upload audio or video file'}</span>
+                                        </div>
+                                        <input
+                                            type="file"
+                                            accept="audio/*,video/*"
+                                            className="hidden"
+                                            onChange={handleFileChange}
+                                        />
+                                    </label>
+
+                                    {previewUrl && (
+                                        <div className="rounded-xl overflow-hidden border border-white/10 bg-slate-900">
+                                            {file.type.startsWith('video') ? (
+                                                <video src={previewUrl} controls className="w-full" />
+                                            ) : (
+                                                <audio src={previewUrl} controls className="w-full" />
+                                            )}
+                                        </div>
+                                    )}
+
+                                    {uploading && (
+                                        <div className="flex items-center gap-3 text-xs text-slate-400">
+                                            <div className="flex-1 h-1.5 bg-slate-800 rounded-full overflow-hidden">
+                                                <div
+                                                    className="h-full bg-red-500 rounded-full transition-all"
+                                                    style={{ width: `${progress}%` }}
+                                                ></div>
+                                            </div>
+                                            <span>{progress}%</span>
+                                        </div>
+                                    )}
+                                </div>
+                            </div>
+
+                            <div className="flex gap-3 pt-2">
+                                <button
+                                    type="submit"
+                                    disabled={uploading}
+                                    className="flex-1 bg-gradient-to-r from-red-600 to-orange-600 py-2.5 rounded-xl text-sm font-bold text-white shadow-lg shadow-red-900/30 hover:scale-[1.01] active:scale-[0.98] disabled:opacity-50"
+                                >
+                                    {uploading ? 'Broadcasting...' : 'Publish Broadcast'}
+                                </button>
+                                <button
+                                    type="button"
+                                    onClick={onClose}
+                                    className="px-4 py-2.5 rounded-xl text-sm font-bold text-slate-300 bg-slate-800 hover:bg-slate-700"
+                                >
+                                    Cancel
+                                </button>
+                            </div>
+                        </form>
+                    </div>
+                </div>
+            );
+        };
+
         function App() {
             const [user, setUser] = useState(null);
             const [activeView, setActiveView] = useState('feed');
@@ -1008,67 +1226,90 @@
             };
 
             useEffect(() => {
-                onAuthStateChanged(auth, u => { 
+                const unsubAuth = onAuthStateChanged(auth, u => { 
                     if (u) {
                         setUser(u); 
                     } else {
-                        // Reset if logged out
                         setUser(null);
                     }
                     setLoading(false); 
                 });
                 
-                // Fetch posts (real or mock)
-                // Note: If running on a domain not whitelisted in Firebase, this fetch will fail.
-                // We'll wrap in try-catch in a real scenario, but onAuthStateChanged handles user state.
-                const q = query(collection(db, 'bmu_radio_posts'), orderBy('createdAt', 'desc'));
-                const unsub = onSnapshot(q, 
+                const qPosts = query(collection(db, 'bmu_radio_posts'), orderBy('createdAt', 'desc'));
+                const unsubPosts = onSnapshot(qPosts, 
                     (snap) => setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() }))),
                     (error) => {
-                        console.error("Firestore access failed (likely guest/domain issue)", error);
-                        // Fallback to mock posts if firestore fails
+                        console.error("Firestore access failed (maybe rules/domain)", error);
                         setPosts(MOCK_POSTS);
                     }
                 );
 
                 const savedLikes = localStorage.getItem('bmu_likes');
                 if(savedLikes) setLikedIds(new Set(JSON.parse(savedLikes)));
-                return () => unsub();
+
+                return () => {
+                    unsubAuth();
+                    unsubPosts();
+                };
             }, []);
 
             useEffect(() => {
-                if (currentTrack) {
-                    const audio = audioRef.current;
-                    audio.src = currentTrack.url;
-                    setIsPlaying(false);
-                    const playPromise = audio.play();
-                    if (playPromise !== undefined) {
-                        playPromise
-                            .then(() => setIsPlaying(true))
-                            .catch(e => { console.error("Playback Error:", e); setIsPlaying(false); });
+                const audio = audioRef.current;
+                const handleEnded = () => setIsPlaying(false);
+                audio.addEventListener('ended', handleEnded);
+                return () => audio.removeEventListener('ended', handleEnded);
+            }, []);
+
+            useEffect(() => {
+                const audio = audioRef.current;
+                if (currentTrack && currentTrack.url) {
+                    try {
+                        audio.src = currentTrack.url;
+                        audio.load();
+                        const playPromise = audio.play();
+                        setIsPlaying(true);
+                        if (playPromise !== undefined) {
+                            playPromise.catch(e => {
+                                console.error("Playback error:", e);
+                                setIsPlaying(false);
+                            });
+                        }
+                    } catch (e) {
+                        console.error(e);
                     }
                 } else {
-                    audioRef.current.pause();
+                    audio.pause();
                     setIsPlaying(false);
                 }
             }, [currentTrack]);
 
             const togglePlay = () => {
-                if (isPlaying) audioRef.current.pause();
-                else audioRef.current.play();
-                setIsPlaying(!isPlaying);
+                const audio = audioRef.current;
+                if (!currentTrack || !currentTrack.url) return;
+                if (isPlaying) {
+                    audio.pause();
+                    setIsPlaying(false);
+                } else {
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => setIsPlaying(true))
+                            .catch(e => {
+                                console.error("Playback error:", e);
+                                setIsPlaying(false);
+                            });
+                    }
+                }
             };
 
-            // Optimistic Like
             const handleLike = async (postId) => {
                 if(likedIds.has(postId)) return;
-                
-                const newLikes = new Set(likedIds).add(postId);
+                const newLikes = new Set(likedIds);
+                newLikes.add(postId);
                 setLikedIds(newLikes);
                 localStorage.setItem('bmu_likes', JSON.stringify([...newLikes]));
                 
-                // If guest, just update local state visually
-                if (user.uid === 'guest') return;
+                if (!user || user.uid === 'guest') return;
 
                 try {
                     await updateDoc(doc(db, 'bmu_radio_posts', postId), { likes: increment(1) });
@@ -1078,7 +1319,7 @@
             };
 
             const handleDeletePost = async (postId) => {
-                if (user.uid === 'guest') {
+                if (!user || user.uid === 'guest') {
                     showToast("Guest cannot delete posts.");
                     return;
                 }
@@ -1098,7 +1339,7 @@
                 setUser(userObj);
                 localStorage.setItem('bmu_user_role', role);
                 if (userObj.uid === 'guest') {
-                    setPosts(MOCK_POSTS); // Load mock data for guest
+                    setPosts(MOCK_POSTS);
                 }
             };
 
@@ -1110,6 +1351,8 @@
                     <LoginSelection onLogin={handleLoginSuccess} error={null} />
                 </>
             );
+
+            const userPostsCount = posts.filter(p => p.authorId === user.uid).length;
 
             return (
                 <div className="min-h-screen pb-24 relative overflow-hidden">
@@ -1128,8 +1371,12 @@
                             <button onClick={async () => { await signOut(auth); window.location.reload(); }} className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
                                 <LogOut size={14} />
                             </button>
-                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white border-2 border-[#020617]">
-                                {user.displayName?.charAt(0)}
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white border-2 border-[#020617] overflow-hidden">
+                                {user.photoURL ? (
+                                    <img src={user.photoURL} className="w-full h-full object-cover" />
+                                ) : (
+                                    user.displayName?.charAt(0)
+                                )}
                             </div>
                         </div>
                     </header>
@@ -1140,6 +1387,7 @@
                                 <h2 className="text-2xl font-black text-white mb-1">On Air Today</h2>
                                 <p className="text-slate-400 text-sm">Discover what's trending on campus.</p>
                             </div>
+
                             <div className="bg-gradient-to-r from-red-900/40 to-orange-900/40 border border-red-500/20 rounded-2xl p-4 mb-8 flex items-center justify-between relative overflow-hidden group animate-slide-up delay-100">
                                 <div className="absolute inset-0 bg-red-600/5 group-hover:bg-red-600/10 transition-colors"></div>
                                 <div className="relative z-10 flex items-center gap-4">
@@ -1158,6 +1406,7 @@
                                     Listen
                                 </button>
                             </div>
+
                             {posts.length === 0 ? (
                                 <div className="text-center py-20 opacity-50 animate-fade-in">
                                     <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
@@ -1190,14 +1439,18 @@
                     {activeView === 'schedule' && <ScheduleView showToast={showToast} />}
                     {activeView === 'profile' && (
                         <div className="p-6 text-center pt-20 animate-fade-in" key="profile">
-                            <div className="w-24 h-24 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-white shadow-2xl shadow-indigo-500/30 border-4 border-[#020617] animate-slide-up">
-                                {user.displayName?.charAt(0)}
+                            <div className="w-24 h-24 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-white shadow-2xl shadow-indigo-500/30 border-4 border-[#020617] animate-slide-up overflow-hidden">
+                                {user.photoURL ? (
+                                    <img src={user.photoURL} className="w-full h-full object-cover" />
+                                ) : (
+                                    user.displayName?.charAt(0)
+                                )}
                             </div>
                             <h2 className="text-2xl font-black text-white animate-slide-up delay-100">{user.displayName}</h2>
                             <p className="text-slate-400 mb-8 animate-slide-up delay-200">Campus Broadcaster</p>
                             <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto animate-slide-up delay-300">
                                 <div className="glass-card p-4 rounded-2xl">
-                                    <span className="block text-2xl font-black text-white">{posts.filter(p => p.authorId === user.uid).length}</span>
+                                    <span className="block text-2xl font-black text-white">{userPostsCount}</span>
                                     <span className="text-xs text-slate-500 uppercase font-bold">Posts</span>
                                 </div>
                                 <div className="glass-card p-4 rounded-2xl">
@@ -1208,7 +1461,14 @@
                         </div>
                     )}
 
-                    {showCreate && <CreatePostModal user={user} onClose={() => setShowCreate(false)} />}
+                    {showCreate && (
+                        <CreatePostModal 
+                            user={user} 
+                            onClose={() => setShowCreate(false)} 
+                            onCreated={() => showToast('Broadcast published!')}
+                        />
+                    )}
+
                     {activeCommentPost && (
                         <CommentSheet 
                             post={activeCommentPost} 
@@ -1229,7 +1489,13 @@
                     <NavigationBar 
                         activeView={activeView} 
                         onViewChange={setActiveView} 
-                        onCreateClick={() => setShowCreate(true)} 
+                        onCreateClick={() => {
+                            if(user.uid === 'guest') {
+                                showToast("Guests cannot create broadcasts. Please login with college ID.");
+                            } else {
+                                setShowCreate(true);
+                            }
+                        }} 
                     />
                 </div>
             );
