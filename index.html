@@ -171,9 +171,7 @@
         ];
 
         const SCHEDULE_DATA = [
-            { id: 1, title: "Morning Lo-Fi Beats", host: "DJ Campus", time: "08:00 AM", type: "Music", live: false },
-            { id: 2, title: "Tech Talk: AI Trends", host: "CS Dept", time: "11:30 AM", type: "Podcast", live: false },
-            { id: 3, title: "Lunchtime Jam", host: "Music Club", time: "01:00 PM", type: "Live", live: true },
+           
             { id: 4, title: "Student Council Updates", host: "Pres. Office", time: "04:00 PM", type: "News", live: false },
             { id: 5, title: "Late Night Confessions", host: "Anonymous", time: "10:00 PM", type: "Buzz", live: false },
         ];
@@ -543,12 +541,7 @@
                                 </button>
                             </form>
                             
-                            <div className="mt-4 pt-4 border-t border-white/5">
-                                <button onClick={handleGuestLogin} className="w-full py-3 rounded-xl font-bold text-slate-300 hover:text-white border border-slate-700 hover:bg-slate-800 transition-all text-sm">
-                                    Enter as Guest (Demo)
-                                </button>
-                            </div>
-
+                        
                             <div className="mt-6 text-center">
                                 <button onClick={() => setIsSignUp(!isSignUp)} className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4">
                                     {isSignUp ? "Already have an account? Login" : "New to campus? Create Profile"}
