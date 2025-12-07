@@ -2,7 +2,7 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
     <title>BMU Campus Radio</title>
     
     <!-- Tailwind CSS -->
@@ -11,7 +11,10 @@
     <!-- Babel for JSX -->
     <script src="https://unpkg.com/@babel/standalone/babel.min.js"></script>
 
-    <!-- Import Map to handle module imports in browser -->
+    <!-- Three.js for 3D Background -->
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/three.js/r128/three.min.js"></script>
+
+    <!-- Import Map -->
     <script type="importmap">
     {
         "imports": {
@@ -27,68 +30,81 @@
     </script>
 
     <style>
-        /* Custom Scrollbar Hide */
-        .scrollbar-hide::-webkit-scrollbar {
-            display: none;
+        :root {
+            --bg-dark: #020617;
+            --glass-border: rgba(255, 255, 255, 0.08);
+            --glass-bg: rgba(15, 23, 42, 0.7);
+            --neon-red: #ef4444;
         }
-        .scrollbar-hide {
-            -ms-overflow-style: none;
-            scrollbar-width: none;
+
+        body {
+            background-color: var(--bg-dark);
+            color: #f8fafc;
+            font-family: 'Inter', sans-serif;
+            -webkit-tap-highlight-color: transparent;
+            overflow-x: hidden;
+        }
+
+        /* Utilities */
+        .scrollbar-hide::-webkit-scrollbar { display: none; }
+        .scrollbar-hide { -ms-overflow-style: none; scrollbar-width: none; }
+        .pb-safe { padding-bottom: env(safe-area-inset-bottom); }
+
+        /* Glassmorphism */
+        .glass-panel {
+            background: var(--glass-bg);
+            backdrop-filter: blur(16px);
+            -webkit-backdrop-filter: blur(16px);
+            border-top: 1px solid var(--glass-border);
+        }
+
+        .glass-card {
+            background: linear-gradient(145deg, rgba(30, 41, 59, 0.4), rgba(15, 23, 42, 0.6));
+            backdrop-filter: blur(10px);
+            border: 1px solid rgba(255, 255, 255, 0.05);
+            box-shadow: 0 4px 6px -1px rgba(0, 0, 0, 0.2);
+            transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+        }
+        
+        .glass-card:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 20px -2px rgba(0, 0, 0, 0.3);
+            border-color: rgba(255, 255, 255, 0.1);
         }
 
         /* Animations */
-        @keyframes float {
-            0% { transform: translateY(0px); }
-            50% { transform: translateY(-10px); }
-            100% { transform: translateY(0px); }
+        @keyframes slideUp {
+            from { transform: translateY(20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        .animate-float {
-            animation: float 6s ease-in-out infinite;
-        }
-        
-        @keyframes slideUpFade {
-            from { opacity: 0; transform: translateY(40px); }
-            to { opacity: 1; transform: translateY(0); }
-        }
-        .animate-slide-up {
-            animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-        }
+        .animate-slide-up { animation: slideUp 0.5s cubic-bezier(0.16, 1, 0.3, 1) forwards; }
 
-        @keyframes equalizer {
-            0% { height: 3px; }
-            50% { height: 15px; }
-            100% { height: 3px; }
+        @keyframes fadeIn {
+            from { opacity: 0; transform: scale(0.98); } 
+            to { opacity: 1; transform: scale(1); }
         }
-        .equalizer-bar {
-            animation: equalizer 1s infinite ease-in-out;
+        .animate-fade-in { animation: fadeIn 0.4s ease-out forwards; }
+
+        @keyframes pop {
+            0% { transform: scale(1); }
+            50% { transform: scale(1.4); }
+            100% { transform: scale(1); }
+        }
+        .animate-pop { animation: pop 0.3s cubic-bezier(0.175, 0.885, 0.32, 1.275); }
+
+        .equalizer-bar { animation: equalizer 1s infinite ease-in-out; }
+        @keyframes equalizer {
+            0% { height: 3px; } 50% { height: 12px; } 100% { height: 3px; }
         }
         .equalizer-bar:nth-child(2) { animation-delay: 0.2s; }
         .equalizer-bar:nth-child(3) { animation-delay: 0.4s; }
-        .equalizer-bar:nth-child(4) { animation-delay: 0.1s; }
-        
-        .fade-in-up {
-            animation: fadeInUp 0.5s ease-out forwards;
-            opacity: 0;
-            transform: translateY(20px);
+
+        /* Toast Animation */
+        @keyframes toast-in {
+            from { transform: translateY(-20px); opacity: 0; }
+            to { transform: translateY(0); opacity: 1; }
         }
-        @keyframes fadeInUp {
-            to { opacity: 1; transform: translateY(0); }
-        }
-        
-        .glass-panel {
-            background: rgba(255, 255, 255, 0.85);
-            backdrop-filter: blur(12px);
-            -webkit-backdrop-filter: blur(12px);
-        }
-        
-        .modal-enter {
-            animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-        }
-        
-        @keyframes modalSlideUp {
-            from { transform: translateY(100%); }
-            to { transform: translateY(0); }
-        }
+        .animate-toast { animation: toast-in 0.3s ease-out forwards; }
     </style>
 </head>
 <body>
@@ -100,35 +116,17 @@
         import { 
           Play, Pause, Mic, Music, Video, User, Plus, 
           Heart, MessageCircle, Radio, Ghost, LogOut, 
-          Headphones, X, Share2, Volume2, Trash2, MoreHorizontal,
-          Flame, Zap, Info, RadioReceiver, Upload, Link as LinkIcon, FileAudio,
-          Maximize2, ExternalLink, Calendar, Send, AlertCircle, Settings, ShieldAlert,
-          UserCircle, ListMusic, PlusCircle, Briefcase, GraduationCap, ChevronRight, Lock, Mail, Camera
+          Headphones, X, Share2, Search, Trash2, Home,
+          Calendar, Send, Bell, CheckCircle, MoreVertical,
+          Clock, ChevronRight, Upload, Link as LinkIcon, FileAudio, FileVideo,
+          Maximize2, ExternalLink, ShieldAlert, Flag, Copy, Phone,
+          UserCircle, ListMusic, PlusCircle, Briefcase, GraduationCap, Lock, Mail, Camera, AlertCircle, BellRing
         } from 'lucide-react';
         import { initializeApp } from 'firebase/app';
-        import { getAnalytics, isSupported } from "firebase/analytics";
-        import { 
-          getAuth, 
-          signInWithEmailAndPassword,
-          createUserWithEmailAndPassword,
-          onAuthStateChanged, 
-          updateProfile,
-          signOut
-        } from 'firebase/auth';
-        import { 
-          getFirestore, 
-          collection, 
-          addDoc, 
-          onSnapshot, 
-          serverTimestamp, 
-          query, 
-          doc,
-          updateDoc,
-          deleteDoc,
-          increment
-        } from 'firebase/firestore';
+        import { getAuth, signInWithEmailAndPassword, createUserWithEmailAndPassword, onAuthStateChanged, updateProfile, signOut } from 'firebase/auth';
+        import { getFirestore, collection, addDoc, onSnapshot, serverTimestamp, query, orderBy, doc, updateDoc, deleteDoc, increment, where } from 'firebase/firestore';
 
-        // --- Firebase Configuration ---
+        // --- Firebase Config ---
         const firebaseConfig = {
           apiKey: "AIzaSyA5qQbhXqej2Ill5jtHWgvsBpk9BsR3a7c",
           authDomain: "bmuradio.firebaseapp.com",
@@ -140,173 +138,290 @@
           measurementId: "G-51N1VLP1DY"
         };
 
-        // --- Initialize Firebase ---
         const app = initializeApp(firebaseConfig);
         const auth = getAuth(app);
         const db = getFirestore(app);
-        
-        // Safe Analytics Init
-        let analytics;
-        isSupported().then(yes => yes ? analytics = getAnalytics(app) : null);
 
-        // --- Constants ---
-        const CATEGORIES = [
-          { id: 'podcast', label: 'Podcasts', icon: Mic, color: 'from-orange-400 to-orange-600', shadow: 'shadow-orange-200' },
-          { id: 'music', label: 'Music', icon: Music, color: 'from-purple-400 to-purple-600', shadow: 'shadow-purple-200' },
-          { id: 'skills', label: 'Skills', icon: Video, color: 'from-blue-400 to-blue-600', shadow: 'shadow-blue-200' },
-          { id: 'buzz', label: 'Campus Buzz', icon: Ghost, color: 'from-pink-500 to-rose-600', shadow: 'shadow-pink-200' },
+        // --- Mock Schedule Data ---
+        const SCHEDULE_DATA = [
+            { id: 1, title: "Morning Lo-Fi Beats", host: "DJ Campus", time: "08:00 AM", type: "Music", live: false },
+            { id: 2, title: "Tech Talk: AI Trends", host: "CS Dept", time: "11:30 AM", type: "Podcast", live: false },
+            { id: 3, title: "Lunchtime Jam", host: "Music Club", time: "01:00 PM", type: "Live", live: true },
+            { id: 4, title: "Student Council Updates", host: "Pres. Office", time: "04:00 PM", type: "News", live: false },
+            { id: 5, title: "Late Night Confessions", host: "Anonymous", time: "10:00 PM", type: "Buzz", live: false },
         ];
-
-        const SAMPLE_TRACKS = [
-          { title: "BMU Morning Lofi", artist: "Campus Vibes", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-1.mp3" },
-          { title: "Student Council Update", artist: "Pres. Office", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-2.mp3" },
-          { title: "Exam Motivation", artist: "Study Group", url: "https://www.soundhelix.com/examples/mp3/SoundHelix-Song-3.mp3" },
-        ];
-
-        // --- Helpers ---
-        const getEmbedUrl = (url) => {
-          if (!url) return null;
-          try {
-            const ytMatch = url.match(/(?:youtu\.be\/|youtube\.com\/(?:embed\/|v\/|watch\?v=|shorts\/|live\/|feature\=player_embedded&v=))([\w-]{11})/);
-            if (ytMatch && ytMatch[1]) {
-              return `https://www.youtube.com/embed/${ytMatch[1]}?autoplay=1&rel=0`;
-            }
-            const vimeoMatch = url.match(/vimeo\.com\/(\d+)/);
-            if (vimeoMatch && vimeoMatch[1]) {
-                return `https://player.vimeo.com/video/${vimeoMatch[1]}?autoplay=1`;
-            }
-            return null;
-          } catch (e) {
-            console.error("Error parsing video URL", e);
-            return null;
-          }
-        };
-
-        const isVideoFile = (url) => {
-            return url && (url.match(/\.(mp4|webm|ogg|mov|m4v)(\?.*)?$/i) || url.startsWith('blob:'));
-        };
-
-        // --- Custom Styles Component ---
-        const Styles = () => (
-          <style>{`
-            @keyframes equalizer {
-              0% { height: 3px; }
-              50% { height: 15px; }
-              100% { height: 3px; }
-            }
-            .equalizer-bar {
-              animation: equalizer 1s infinite ease-in-out;
-            }
-            .equalizer-bar:nth-child(2) { animation-delay: 0.2s; }
-            .equalizer-bar:nth-child(3) { animation-delay: 0.4s; }
-            .equalizer-bar:nth-child(4) { animation-delay: 0.1s; }
-            
-            .fade-in-up {
-              animation: fadeInUp 0.5s ease-out forwards;
-              opacity: 0;
-              transform: translateY(20px);
-            }
-            @keyframes fadeInUp {
-              to { opacity: 1; transform: translateY(0); }
-            }
-            
-            .glass-panel {
-              background: rgba(255, 255, 255, 0.85);
-              backdrop-filter: blur(12px);
-              -webkit-backdrop-filter: blur(12px);
-            }
-            
-            .modal-enter {
-                animation: modalSlideUp 0.3s cubic-bezier(0.16, 1, 0.3, 1);
-            }
-            
-            @keyframes modalSlideUp {
-                from { transform: translateY(100%); }
-                to { transform: translateY(0); }
-            }
-
-            /* Animations */
-            @keyframes float {
-                0% { transform: translateY(0px); }
-                50% { transform: translateY(-10px); }
-                100% { transform: translateY(0px); }
-            }
-            .animate-float {
-                animation: float 6s ease-in-out infinite;
-            }
-            
-            @keyframes slideUpFade {
-                from { opacity: 0; transform: translateY(40px); }
-                to { opacity: 1; transform: translateY(0); }
-            }
-            .animate-slide-up {
-                animation: slideUpFade 0.8s cubic-bezier(0.16, 1, 0.3, 1) forwards;
-            }
-          `}</style>
-        );
 
         // --- Components ---
 
-        const LoadingScreen = () => (
-          <div className="flex flex-col items-center justify-center h-screen bg-slate-900 text-white">
-            <div className="relative mb-6">
-              <div className="absolute inset-0 bg-red-500 rounded-full blur-xl opacity-50 animate-pulse"></div>
-              <Radio size={64} className="relative z-10 text-white animate-bounce" />
+        // ✨ Toast Component ✨
+        const Toast = ({ message, onClose }) => {
+            useEffect(() => {
+                const timer = setTimeout(onClose, 3000);
+                return () => clearTimeout(timer);
+            }, [onClose]);
+
+            return (
+                <div className="fixed top-20 left-1/2 transform -translate-x-1/2 z-[100] animate-toast">
+                    <div className="bg-slate-800/90 backdrop-blur-md border border-indigo-500/30 text-white px-6 py-3 rounded-full shadow-2xl flex items-center gap-2">
+                        <CheckCircle size={16} className="text-indigo-400" />
+                        <span className="text-sm font-medium">{message}</span>
+                    </div>
+                </div>
+            );
+        };
+
+        const Footer = () => (
+            <div className="mt-12 mb-24 px-6 text-center animate-fade-in pb-safe">
+                <div className="relative glass-card rounded-2xl p-6 border border-white/5 overflow-hidden group">
+                    <div className="absolute inset-0 bg-gradient-to-br from-indigo-500/5 to-purple-500/5 opacity-0 group-hover:opacity-100 transition-opacity duration-500"></div>
+                    <div className="absolute top-0 left-0 right-0 h-[1px] bg-gradient-to-r from-transparent via-indigo-500/50 to-transparent"></div>
+
+                    <div className="relative z-10">
+                        <div className="flex items-center justify-center gap-2 mb-4">
+                            <span className="h-[1px] w-8 bg-slate-700"></span>
+                            <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest">Connect</span>
+                            <span className="h-[1px] w-8 bg-slate-700"></span>
+                        </div>
+
+                        <div className="flex flex-wrap justify-center gap-3 mb-6">
+                            <a href="mailto:vivek.yadav25cse@bmu.edu.in" className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-white/5 text-xs text-slate-300 hover:bg-indigo-500/20 hover:border-indigo-500/30 hover:text-white transition-all active:scale-95 group/link">
+                                <Mail size={14} className="group-hover/link:text-indigo-400 transition-colors" />
+                                <span>Email</span>
+                            </a>
+                            <a href="https://t.me/Rahagirrr" target="_blank" rel="noopener noreferrer" className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-white/5 text-xs text-slate-300 hover:bg-blue-500/20 hover:border-blue-500/30 hover:text-white transition-all active:scale-95 group/link">
+                                <Send size={14} className="group-hover/link:text-blue-400 transition-colors" />
+                                <span>Telegram</span>
+                            </a>
+                            <a href="tel:9996445592" className="flex items-center gap-2 px-4 py-2 rounded-full bg-slate-800/50 border border-white/5 text-xs text-slate-300 hover:bg-green-500/20 hover:border-green-500/30 hover:text-white transition-all active:scale-95 group/link">
+                                <Phone size={14} className="group-hover/link:text-green-400 transition-colors" />
+                                <span>Call</span>
+                            </a>
+                        </div>
+
+                        <div className="pt-4 border-t border-white/5">
+                            <p className="text-slate-400 text-xs flex items-center justify-center gap-1.5">
+                                Crafted with <Heart size={12} className="fill-red-500 text-red-500 animate-pulse" /> by 
+                                <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-400 to-purple-400 font-bold hover:brightness-125 transition-all cursor-default">
+                                    Vivek Yadav
+                                </span>
+                            </p>
+                            <p className="text-[10px] text-slate-600 mt-1">© 2025 BMU Campus Radio</p>
+                        </div>
+                    </div>
+                </div>
             </div>
-            <h1 className="text-2xl font-black tracking-widest bg-clip-text text-transparent bg-gradient-to-r from-red-400 to-orange-400">BMU RADIO</h1>
-            <p className="text-slate-400 text-sm mt-2 font-mono">Loading Waves...</p>
-          </div>
         );
 
-        const LoginSelection = ({ onLogin, error: propError }) => {
+        const HandWriter = () => {
+            const mountRef = useRef(null);
+            const [textProgress, setTextProgress] = useState(0);
+            const fullText = "PLACE WHERE BMU COMMUNITY INTERACT";
+
+            useEffect(() => {
+                const scene = new THREE.Scene();
+                const camera = new THREE.PerspectiveCamera(50, 1, 0.1, 100); 
+                camera.position.z = 10;
+                camera.position.y = 0;
+
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                const width = mountRef.current.clientWidth;
+                const height = 120;
+                renderer.setSize(width, height);
+                
+                if (mountRef.current) {
+                    mountRef.current.appendChild(renderer.domElement);
+                }
+
+                const handGroup = new THREE.Group();
+                const penGeo = new THREE.CylinderGeometry(0.1, 0.05, 4, 12);
+                penGeo.translate(0, 2, 0); 
+                const penMat = new THREE.MeshBasicMaterial({ color: 0xef4444 }); 
+                const pen = new THREE.Mesh(penGeo, penMat);
+                pen.rotation.z = -0.3;
+                pen.rotation.x = 0.3; 
+                handGroup.add(pen);
+
+                const handMat = new THREE.MeshStandardMaterial({ color: 0x334155, roughness: 0.3, metalness: 0.8 });
+                const palmGeo = new THREE.BoxGeometry(1.5, 0.5, 2);
+                const palm = new THREE.Mesh(palmGeo, handMat);
+                palm.position.set(0.5, 2.5, 0.5);
+                palm.rotation.z = -0.3;
+                handGroup.add(palm);
+
+                const fingerGeo = new THREE.BoxGeometry(0.3, 1.2, 0.3);
+                for(let i=0; i<3; i++) {
+                    const finger = new THREE.Mesh(fingerGeo, handMat);
+                    finger.position.set(0.2 + (i*0.4), 1.8, 0.5 + (i*0.1));
+                    finger.rotation.z = -0.5;
+                    finger.rotation.x = 0.2;
+                    handGroup.add(finger);
+                }
+
+                const thumb = new THREE.Mesh(fingerGeo, handMat);
+                thumb.position.set(-0.2, 2.0, 0.2);
+                thumb.rotation.z = 0.5;
+                handGroup.add(thumb);
+
+                scene.add(handGroup);
+
+                const ambientLight = new THREE.AmbientLight(0xffffff, 0.5);
+                scene.add(ambientLight);
+                const pointLight = new THREE.PointLight(0xef4444, 1, 10);
+                pointLight.position.set(2, 5, 5);
+                scene.add(pointLight);
+
+                let startTime = Date.now();
+                const duration = 4000;
+
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    const elapsed = Date.now() - startTime;
+                    const progress = Math.min(elapsed / duration, 1);
+                    if (progress >= 1 && elapsed > duration + 2000) startTime = Date.now();
+
+                    const startX = -6;
+                    const endX = 6;
+                    const currentX = startX + (endX - startX) * progress;
+
+                    handGroup.position.x = currentX;
+                    if (progress < 1) {
+                        handGroup.position.y = Math.sin(elapsed * 0.02) * 0.2 - 1.5; 
+                        handGroup.rotation.z = Math.sin(elapsed * 0.015) * 0.05;
+                    } else {
+                        handGroup.position.y += (1 - handGroup.position.y) * 0.05;
+                    }
+
+                    const charCount = Math.floor(progress * fullText.length);
+                    setTextProgress(charCount);
+
+                    renderer.render(scene, camera);
+                };
+
+                animate();
+
+                return () => {
+                    if (mountRef.current && renderer.domElement) mountRef.current.removeChild(renderer.domElement);
+                    renderer.dispose();
+                };
+            }, []);
+
+            return (
+                <div className="w-full flex flex-col items-center justify-center mb-6 relative">
+                    <div ref={mountRef} className="absolute top-0 left-0 w-full h-[120px] pointer-events-none z-20" />
+                    <div className="relative z-10 h-[120px] flex items-center justify-center pt-8">
+                        <h2 className="text-2xl md:text-4xl italic font-black text-white tracking-widest text-center font-mono whitespace-nowrap">
+                            {fullText.substring(0, textProgress)}
+                            <span className="border-r-4 border-red-500 ml-1 animate-pulse"></span>
+                        </h2>
+                    </div>
+                </div>
+            );
+        };
+
+        const Background3D = () => {
+            const mountRef = useRef(null);
+
+            useEffect(() => {
+                const scene = new THREE.Scene();
+                scene.fog = new THREE.FogExp2(0x020617, 0.0035);
+
+                const camera = new THREE.PerspectiveCamera(75, window.innerWidth / window.innerHeight, 0.1, 1000);
+                camera.position.z = 5;
+                camera.position.y = 1.5;
+                camera.rotation.x = -0.2;
+
+                const renderer = new THREE.WebGLRenderer({ alpha: true, antialias: true });
+                renderer.setSize(window.innerWidth, window.innerHeight);
+                renderer.setPixelRatio(Math.min(window.devicePixelRatio, 2));
+                
+                if (mountRef.current) mountRef.current.appendChild(renderer.domElement);
+
+                const geometry = new THREE.PlaneGeometry(30, 30, 40, 40);
+                const material = new THREE.MeshBasicMaterial({ 
+                    color: 0x6366f1, 
+                    wireframe: true,
+                    transparent: true,
+                    opacity: 0.15,
+                    side: THREE.DoubleSide
+                });
+                const plane = new THREE.Mesh(geometry, material);
+                plane.rotation.x = -Math.PI / 2;
+                scene.add(plane);
+
+                const particlesGeo = new THREE.BufferGeometry();
+                const particlesCount = 400;
+                const posArray = new Float32Array(particlesCount * 3);
+                for(let i=0; i < particlesCount * 3; i++) {
+                    posArray[i] = (Math.random() - 0.5) * 20;
+                }
+                particlesGeo.setAttribute('position', new THREE.BufferAttribute(posArray, 3));
+                const particlesMat = new THREE.PointsMaterial({
+                    size: 0.03,
+                    color: 0xef4444, 
+                    transparent: true,
+                    opacity: 0.6,
+                    blending: THREE.AdditiveBlending
+                });
+                const particlesMesh = new THREE.Points(particlesGeo, particlesMat);
+                scene.add(particlesMesh);
+
+                let count = 0;
+                const animate = () => {
+                    requestAnimationFrame(animate);
+                    count += 0.05;
+                    const now = Date.now() * 0.001;
+                    const positions = plane.geometry.attributes.position.array;
+                    
+                    for (let i = 0; i < positions.length; i += 3) {
+                        const x = positions[i];
+                        const y = positions[i+1];
+                        positions[i + 2] = Math.sin(x / 2 + now) * 0.5 + Math.sin(y / 2 + now) * 0.5;
+                    }
+                    plane.geometry.attributes.position.needsUpdate = true;
+                    particlesMesh.rotation.y = now * 0.05;
+                    particlesMesh.position.y = Math.sin(now * 0.2) * 0.5;
+                    camera.position.x = Math.sin(now * 0.1) * 0.2;
+                    camera.lookAt(0, 0, 0);
+                    renderer.render(scene, camera);
+                };
+                animate();
+
+                const handleResize = () => {
+                    camera.aspect = window.innerWidth / window.innerHeight;
+                    camera.updateProjectionMatrix();
+                    renderer.setSize(window.innerWidth, window.innerHeight);
+                };
+                window.addEventListener('resize', handleResize);
+
+                return () => {
+                    window.removeEventListener('resize', handleResize);
+                    if (mountRef.current && renderer.domElement) mountRef.current.removeChild(renderer.domElement);
+                    geometry.dispose();
+                    material.dispose();
+                    particlesGeo.dispose();
+                    particlesMat.dispose();
+                    renderer.dispose();
+                };
+            }, []);
+
+            return <div ref={mountRef} className="fixed inset-0 z-[-1]" />;
+        };
+
+        const LoginSelection = ({ onLogin, error }) => {
             const [email, setEmail] = useState('');
             const [password, setPassword] = useState('');
             const [role, setRole] = useState('student');
             const [isSignUp, setIsSignUp] = useState(false);
             const [localError, setLocalError] = useState(null);
             const [isLoading, setIsLoading] = useState(false);
-            const [profileImage, setProfileImage] = useState(null); // base64 string
+            const [profileImage, setProfileImage] = useState(null);
             const fileInputRef = useRef(null);
 
             const handleImageChange = (e) => {
                 const file = e.target.files[0];
-                if (file) {
-                    if (file.size > 500000) { // 500KB limit
-                        setLocalError("Image too large. Please use an image under 500KB.");
-                        return;
-                    }
-                    // Read file and convert to base64
+                if (file && file.size <= 500000) {
                     const reader = new FileReader();
-                    reader.onloadend = () => {
-                        // Create an image element to resize
-                        const img = new Image();
-                        img.src = reader.result;
-                        img.onload = () => {
-                            const canvas = document.createElement('canvas');
-                            const ctx = canvas.getContext('2d');
-                            // Resize to 150x150 thumbnail
-                            const maxWidth = 150;
-                            const maxHeight = 150;
-                            let width = img.width;
-                            let height = img.height;
-
-                            if (width > height) {
-                                if (width > maxWidth) {
-                                    height *= maxWidth / width;
-                                    width = maxWidth;
-                                }
-                            } else {
-                                if (height > maxHeight) {
-                                    width *= maxHeight / height;
-                                    height = maxHeight;
-                                }
-                            }
-                            canvas.width = width;
-                            canvas.height = height;
-                            ctx.drawImage(img, 0, 0, width, height);
-                            setProfileImage(canvas.toDataURL('image/jpeg', 0.8)); // Save as optimized JPEG
-                        };
-                    };
+                    reader.onloadend = () => setProfileImage(reader.result);
                     reader.readAsDataURL(file);
                 }
             };
@@ -314,541 +429,85 @@
             const handleSubmit = async (e) => {
                 e.preventDefault();
                 setLocalError(null);
-
-                if (!email.trim().toLowerCase().endsWith('@bmu.edu.in')) {
+                if (!email.endsWith('@bmu.edu.in')) {
                     setLocalError("Please login with college ID (@bmu.edu.in)");
                     return;
                 }
-
-                if (password.length < 6) {
-                    setLocalError("Password must be at least 6 characters");
-                    return;
-                }
-
                 setIsLoading(true);
                 try {
                     if (isSignUp) {
-                        const userCredential = await createUserWithEmailAndPassword(auth, email, password);
-                        const user = userCredential.user;
-                        
+                        const userCred = await createUserWithEmailAndPassword(auth, email, password);
                         const namePart = email.split('@')[0];
-                        const formattedName = namePart.charAt(0).toUpperCase() + namePart.slice(1);
-                        const displayName = `${formattedName}_${role}`;
-
-                        await updateProfile(user, { 
-                            displayName: displayName,
-                            photoURL: profileImage // Save the base64 image string to profile
-                        });
-                        
-                        onLogin(user, role);
+                        const displayName = `${namePart.charAt(0).toUpperCase() + namePart.slice(1)}_${role}`;
+                        await updateProfile(userCred.user, { displayName, photoURL: profileImage });
+                        onLogin(userCred.user, role);
                     } else {
-                        const userCredential = await signInWithEmailAndPassword(auth, email, password);
-                        const existingName = userCredential.user.displayName || '';
-                        const detectedRole = existingName.includes('_staff') ? 'staff' : 'student';
-                        onLogin(userCredential.user, detectedRole);
+                        const userCred = await signInWithEmailAndPassword(auth, email, password);
+                        const detectedRole = userCred.user.displayName?.includes('_staff') ? 'staff' : 'student';
+                        onLogin(userCred.user, detectedRole);
                     }
                 } catch (err) {
-                    console.error("Auth Error", err);
-                    if (err.code === 'auth/operation-not-allowed') {
-                        setLocalError("Email/Password login is not enabled in Firebase Console.");
-                    } else if (err.code === 'auth/invalid-credential' || err.code === 'auth/user-not-found' || err.code === 'auth/wrong-password') {
-                        setLocalError("Invalid email or password.");
-                    } else if (err.code === 'auth/email-already-in-use') {
-                        setLocalError("Account already exists. Try logging in.");
-                    } else {
-                        setLocalError(err.message);
-                    }
+                    setLocalError(err.message.replace('Firebase:', '').trim());
                 } finally {
                     setIsLoading(false);
                 }
             };
 
             return (
-              <div className="flex flex-col items-center justify-center min-h-screen bg-slate-900 text-white p-6 relative overflow-hidden">
-                <div className="absolute top-[-20%] right-[-20%] w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-blue-600/20 rounded-full blur-3xl animate-pulse delay-1000"></div>
-
-                <div className="relative z-10 w-full max-w-sm animate-slide-up">
-                  <div className="text-center mb-6">
-                    <div className="w-20 h-20 bg-gradient-to-br from-red-600 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-red-900/50 animate-float">
-                      <Radio size={40} className="text-white" />
-                    </div>
-                    <h1 className="text-3xl font-black tracking-widest text-white">BMU RADIO</h1>
-                    <p className="text-slate-400 text-sm">Community Login</p>
-                  </div>
-
-                  {(localError || propError) && (
-                    <div className="bg-red-500/20 border border-red-500/50 p-3 rounded-xl mb-6 flex items-start gap-3 animate-in fade-in slide-in-from-top-2">
-                        <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
-                        <p className="text-xs text-red-200 font-medium">{localError || propError}</p>
-                    </div>
-                  )}
-
-                  <div className="bg-slate-800/50 backdrop-blur-xl border border-slate-700 p-6 rounded-3xl shadow-xl transition-all duration-500 hover:shadow-2xl hover:border-slate-600">
-                      <form onSubmit={handleSubmit} className="space-y-4">
-                          
-                          {/* Profile Image Upload (Sign Up Only) */}
-                          {isSignUp && (
-                              <div className="flex flex-col items-center mb-4 animate-in fade-in zoom-in">
-                                  <input 
-                                    type="file" 
-                                    accept="image/*" 
-                                    className="hidden" 
-                                    ref={fileInputRef} 
-                                    onChange={handleImageChange}
-                                  />
-                                  <div 
-                                    onClick={() => fileInputRef.current.click()}
-                                    className="relative w-20 h-20 rounded-full bg-slate-700 border-2 border-dashed border-slate-500 flex items-center justify-center cursor-pointer hover:border-red-500 overflow-hidden transition-all duration-300 hover:scale-105 group"
-                                  >
-                                      {profileImage ? (
-                                          <img src={profileImage} alt="Profile" className="w-full h-full object-cover" />
-                                      ) : (
-                                          <Camera className="text-slate-400 group-hover:text-red-500 transition-colors" size={24} />
-                                      )}
-                                      <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
-                                          <Plus size={20} className="text-white" />
-                                      </div>
-                                  </div>
-                                  <p className="text-[10px] text-slate-400 mt-2">Upload Profile Photo</p>
-                              </div>
-                          )}
-
-                          <div className="flex bg-slate-900 p-1 rounded-xl">
-                             <button
-                               type="button"
-                               onClick={() => setRole('student')}
-                               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${role === 'student' ? 'bg-red-600 text-white shadow-lg transform scale-[1.02]' : 'text-slate-500 hover:text-slate-300'}`}
-                             >
-                               <GraduationCap size={16} /> Student
-                             </button>
-                             <button
-                               type="button"
-                               onClick={() => setRole('staff')}
-                               className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-2 ${role === 'staff' ? 'bg-blue-600 text-white shadow-lg transform scale-[1.02]' : 'text-slate-500 hover:text-slate-300'}`}
-                             >
-                               <Briefcase size={16} /> Staff
-                             </button>
-                          </div>
-
-                          <div className="space-y-3">
-                              <div className="relative group">
-                                  <Mail className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-red-500 transition-colors" size={18} />
-                                  <input 
-                                    type="email" 
-                                    required
-                                    value={email}
-                                    onChange={(e) => setEmail(e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500 transition-all duration-300 focus:ring-2 focus:ring-red-500/20 focus:scale-[1.02]"
-                                    placeholder="your.name@bmu.edu.in"
-                                  />
-                              </div>
-                              <div className="relative group">
-                                  <Lock className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-red-500 transition-colors" size={18} />
-                                  <input 
-                                    type="password" 
-                                    required
-                                    value={password}
-                                    onChange={(e) => setPassword(e.target.value)}
-                                    className="w-full bg-slate-900 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500 transition-all duration-300 focus:ring-2 focus:ring-red-500/20 focus:scale-[1.02]"
-                                    placeholder="Password"
-                                  />
-                              </div>
-                          </div>
-
-                          <button 
-                            type="submit" 
-                            disabled={isLoading}
-                            className={`w-full py-3.5 rounded-xl font-bold text-white shadow-lg flex items-center justify-center gap-2 transition-all duration-300 transform hover:scale-[1.03] active:scale-[0.98] ${role === 'staff' ? 'bg-blue-600 hover:bg-blue-700 shadow-blue-900/20' : 'bg-red-600 hover:bg-red-700 shadow-red-900/20'} ${isLoading ? 'opacity-70 cursor-not-allowed' : ''}`}
-                          >
-                            {isLoading ? (
-                                <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div>
-                            ) : (
-                                isSignUp ? 'Create Profile' : 'Login'
-                            )}
-                          </button>
-                      </form>
-
-                      <div className="mt-6 text-center">
-                          <button 
-                            onClick={() => { setIsSignUp(!isSignUp); setLocalError(null); setProfileImage(null); }}
-                            className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4 hover:decoration-white"
-                          >
-                              {isSignUp ? "Already have an account? Login" : "First time here? Create Profile"}
-                          </button>
-                      </div>
-                  </div>
-                </div>
-              </div>
-            );
-        };
-
-        const ConfigErrorScreen = ({ errorType }) => {
-          return (
-            <div className="flex flex-col items-center justify-center min-h-screen bg-slate-50 text-slate-800 p-6">
-              <div className="bg-white p-8 rounded-3xl shadow-xl max-w-lg w-full border border-red-100">
-                <div className="w-16 h-16 bg-red-100 rounded-full flex items-center justify-center mb-6 mx-auto text-red-600">
-                  <ShieldAlert size={32} />
-                </div>
-                <h2 className="text-2xl font-bold text-center mb-2">Database Locked</h2>
-                <div className="bg-red-50 border border-red-200 rounded-xl p-4 mb-6">
-                  <div className="flex items-start gap-3">
-                    <AlertCircle className="text-red-600 shrink-0 mt-0.5" size={20} />
-                    <div>
-                      <h4 className="font-bold text-red-700 text-sm mb-1">Missing Permissions</h4>
-                      <p className="text-red-600 text-xs leading-relaxed">Your Firestore Database rules are blocking access.</p>
-                    </div>
-                  </div>
-                </div>
-                <div className="space-y-4">
-                  <h3 className="font-bold text-sm uppercase text-slate-400 tracking-wider">How to Fix in Firebase Console:</h3>
-                    <div className="space-y-3">
-                      <ol className="list-decimal list-inside space-y-2 text-sm text-slate-700 font-medium">
-                        <li>Go to <strong>Firestore Database</strong> &gt; <strong>Rules</strong> tab.</li>
-                        <li>Delete everything there and paste this code:</li>
-                      </ol>
-                      <div className="bg-slate-900 text-green-400 p-3 rounded-lg text-xs font-mono overflow-x-auto">
-                        <pre>{`rules_version = '2';
-        service cloud.firestore {
-          match /databases/{database}/documents {
-            match /{document=**} {
-              allow read, write: if true;
-            }
-          }
-        }`}</pre>
-                      </div>
-                    </div>
-                </div>
-                <button onClick={() => window.location.reload()} className="w-full mt-8 bg-slate-900 text-white py-3 rounded-xl font-bold hover:bg-slate-800 transition-colors">I Fixed It, Refresh App</button>
-              </div>
-            </div>
-          );
-        };
-
-        const Visualizer = () => (
-          <div className="flex items-end gap-[2px] h-4">
-            <div className="w-1 bg-white rounded-t-sm equalizer-bar"></div>
-            <div className="w-1 bg-white rounded-t-sm equalizer-bar"></div>
-            <div className="w-1 bg-white rounded-t-sm equalizer-bar"></div>
-            <div className="w-1 bg-white rounded-t-sm equalizer-bar"></div>
-          </div>
-        );
-
-        const InfoModal = ({ onClose }) => (
-          <div className="fixed inset-0 z-[70] flex items-center justify-center p-4">
-            <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm" onClick={onClose}></div>
-            <div className="bg-white w-full max-w-sm rounded-3xl p-6 relative z-10 shadow-2xl animate-[scaleIn_0.3s_ease-out]">
-              <div className="flex justify-between items-center mb-4">
-                <h3 className="font-bold text-lg">About BMU Radio</h3>
-                <button onClick={onClose} className="p-1 rounded-full hover:bg-slate-100"><X size={20} /></button>
-              </div>
-              <p className="text-slate-600 text-sm mb-4">
-                This is an <span className="font-bold text-slate-900">Open Community Platform</span> for BML Munjal University students.
-              </p>
-              <ul className="space-y-3 text-sm text-slate-700">
-                <li className="flex items-start gap-2">
-                  <Mic size={16} className="mt-1 text-red-500" />
-                  <span>Broadcast your own podcasts, music, or skills.</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Radio size={16} className="mt-1 text-red-500" />
-                  <span>Go <strong>LIVE</strong> by sharing streaming links (YouTube, Meet, etc.).</span>
-                </li>
-                <li className="flex items-start gap-2">
-                  <Ghost size={16} className="mt-1 text-slate-800" />
-                  <span>Post anonymously or build your reputation.</span>
-                </li>
-              </ul>
-              <button onClick={onClose} className="w-full mt-6 bg-slate-900 text-white py-3 rounded-xl font-bold">Got it!</button>
-            </div>
-          </div>
-        );
-
-        const ProfileMenu = ({ user, onClose, onViewChange, onCreateClick, role }) => {
-            const handleLogout = async () => {
-                await signOut(auth);
-                // Clear local role preference
-                localStorage.removeItem('bmu_user_role');
-                window.location.reload();
-            };
-
-            return (
-                <div className="absolute top-16 right-4 w-64 bg-white rounded-2xl shadow-2xl border border-slate-100 z-50 animate-in fade-in zoom-in duration-200 origin-top-right overflow-hidden">
-                    <div className="p-4 bg-gradient-to-r from-slate-900 to-slate-800 text-white">
-                        <div className="flex items-center gap-3 mb-2">
-                            {user.photoURL ? (
-                                <img src={user.photoURL} alt="Profile" className="w-10 h-10 rounded-full border-2 border-white/30 object-cover" />
-                            ) : (
-                                <div className="w-10 h-10 rounded-full bg-slate-700 flex items-center justify-center">
-                                    <span className="font-bold text-lg">{user.displayName?.charAt(0) || 'U'}</span>
-                                </div>
-                            )}
-                            <div className="flex-1 overflow-hidden">
-                                <p className="font-bold text-sm truncate">{user?.displayName ? user.displayName.split('_')[0] : 'User'}</p>
-                                <span className={`text-[10px] font-bold px-1.5 py-0.5 rounded text-white border border-white/20 inline-block ${role === 'staff' ? 'bg-blue-600' : 'bg-red-600'}`}>
-                                    {role?.toUpperCase() || 'USER'}
-                                </span>
+                <div className="flex flex-col items-center justify-center min-h-screen text-white p-6 relative overflow-hidden">
+                    <div className="relative z-10 w-full max-w-sm animate-slide-up">
+                        <HandWriter />
+                        <div className="text-center mb-8">
+                            <div className="w-20 h-20 bg-gradient-to-tr from-red-600 to-orange-600 rounded-2xl flex items-center justify-center mx-auto mb-4 shadow-2xl shadow-red-900/50 animate-bounce">
+                                <Radio size={40} className="text-white" />
                             </div>
+                            <h1 className="text-4xl font-black tracking-tighter text-white drop-shadow-lg">BMU RADIO</h1>
+                            <p className="text-slate-300 text-sm mt-1 font-medium tracking-wide">The Sound of Campus</p>
                         </div>
-                    </div>
-                    
-                    <div className="p-2 space-y-1">
-                        <button onClick={() => { onCreateClick(); onClose(); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-red-50 text-red-600 font-bold text-sm flex items-center gap-3 transition-colors">
-                            <PlusCircle size={18} /> New Broadcast
-                        </button>
-                    </div>
-
-                    <div className="h-px bg-slate-100 mx-2"></div>
-
-                    <div className="p-2 space-y-1">
-                        <button onClick={() => { onViewChange('mine'); onClose(); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 font-medium text-sm flex items-center gap-3 transition-colors">
-                            <UserCircle size={18} /> My Broadcasts
-                        </button>
-                        <button onClick={() => { onViewChange('liked'); onClose(); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 font-medium text-sm flex items-center gap-3 transition-colors">
-                            <Heart size={18} /> Liked Stations
-                        </button>
-                        <button onClick={() => { onViewChange('all'); onClose(); }} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-100 text-slate-700 font-medium text-sm flex items-center gap-3 transition-colors">
-                            <ListMusic size={18} /> Main Feed
-                        </button>
-                    </div>
-
-                    <div className="h-px bg-slate-100 mx-2"></div>
-
-                    <div className="p-2">
-                        <button onClick={handleLogout} className="w-full text-left px-3 py-2.5 rounded-xl hover:bg-slate-100 text-slate-500 hover:text-slate-800 font-medium text-sm flex items-center gap-3 transition-colors">
-                            <LogOut size={18} /> Sign Out
-                        </button>
-                    </div>
-                </div>
-            );
-        };
-
-        const PostDetailModal = ({ post, onClose, onPlay, user, onDelete, isLiked, onLike }) => {
-            const [comments, setComments] = useState([]);
-            const [newComment, setNewComment] = useState('');
-            const [isSubmitting, setIsSubmitting] = useState(false);
-            const [likeCount, setLikeCount] = useState(post.likes || 0);
-
-            const isOwner = user && post.authorId === user.uid;
-            const isLive = post.broadcastType === 'live';
-            const isAudio = post.category === 'podcast' || post.category === 'music';
-            const embedUrl = getEmbedUrl(post.mediaUrl);
-            const isDirectVideo = isVideoFile(post.mediaUrl);
-
-            useEffect(() => {
-                const q = query(collection(db, 'bmu_radio_comments')); 
-                const unsubscribe = onSnapshot(q, (snapshot) => {
-                    const allComments = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-                    const postComments = allComments.filter(c => c.postId === post.id);
-                    postComments.sort((a, b) => (a.createdAt?.seconds || 0) - (b.createdAt?.seconds || 0));
-                    setComments(postComments);
-                }, (error) => {
-                    console.error("Error fetching comments:", error);
-                });
-                return () => unsubscribe();
-            }, [post.id]);
-
-            const handlePostComment = async (e) => {
-                e.preventDefault();
-                if(!newComment.trim() || !user) return;
-                setIsSubmitting(true);
-                try {
-                    await addDoc(collection(db, 'bmu_radio_comments'), {
-                        postId: post.id,
-                        text: newComment,
-                        authorName: user.displayName || 'Anonymous',
-                        authorId: user.uid,
-                        createdAt: serverTimestamp()
-                    });
-                    setNewComment('');
-                } catch (error) {
-                    console.error("Error posting comment:", error);
-                    alert("Could not post comment. Check if you have permission.");
-                } finally {
-                    setIsSubmitting(false);
-                }
-            };
-
-            const handleLikeClick = async () => {
-                if (isLiked) return;
-                setLikeCount(prev => prev + 1);
-                onLike(post.id); // Update local state
-                try {
-                    const docRef = doc(db, 'bmu_radio_posts', post.id);
-                    await updateDoc(docRef, { likes: increment(1) });
-                } catch (err) {
-                    console.error("Like failed", err);
-                    setLikeCount(prev => prev - 1);
-                }
-            };
-
-            const handleShare = () => {
-                const text = `Check out "${post.title}" on BMU Radio!`;
-                navigator.clipboard.writeText(text);
-                alert("Link copied to clipboard!");
-            };
-
-            return (
-                <div className="fixed inset-0 z-[80] flex items-end sm:items-center justify-center sm:p-4">
-                    <div className="absolute inset-0 bg-slate-900/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-                    <div className="bg-white w-full max-w-lg h-[90vh] sm:h-[85vh] rounded-t-3xl sm:rounded-3xl shadow-2xl relative z-10 flex flex-col modal-enter overflow-hidden">
-                        
-                        {/* Header */}
-                        <div className="p-4 border-b border-slate-100 flex items-center justify-between bg-white/80 backdrop-blur sticky top-0 z-20">
-                            <div className="flex items-center gap-3">
-                                {post.authorPhoto ? (
-                                    <img src={post.authorPhoto} className="w-8 h-8 rounded-full object-cover border border-slate-200" alt="Author" />
-                                ) : (
-                                    <div className={`w-8 h-8 rounded-full flex items-center justify-center text-white text-xs font-bold ${post.isAnonymous ? 'bg-slate-800' : 'bg-red-600'}`}>
-                                        {post.isAnonymous ? <Ghost size={14} /> : (post.authorName?.charAt(0) || 'U')}
-                                    </div>
-                                )}
-                                <div className="flex flex-col">
-                                    <span className="font-bold text-sm text-slate-900 line-clamp-1">{post.title}</span>
-                                    <span className="text-[10px] text-slate-500">{post.isAnonymous ? 'Anonymous' : (post.authorName?.split('_')[0] || post.authorName)}</span>
-                                </div>
+                        {(localError || error) && (
+                            <div className="bg-red-500/20 backdrop-blur border border-red-500/50 p-3 rounded-xl mb-6 flex items-start gap-3 animate-slide-up">
+                                <AlertCircle className="text-red-400 shrink-0 mt-0.5" size={18} />
+                                <p className="text-xs text-red-100 font-medium">{localError || error}</p>
                             </div>
-                            <button onClick={onClose} className="p-2 bg-slate-100 rounded-full hover:bg-slate-200 transition-colors">
-                                <X size={18} className="text-slate-600" />
-                            </button>
-                        </div>
-
-                        {/* Scrollable Content */}
-                        <div className="flex-1 overflow-y-auto p-0 scrollbar-hide">
-                            
-                            {/* Media Stage */}
-                            <div className="bg-slate-900 w-full min-h-[250px] flex items-center justify-center relative group">
-                                {embedUrl ? (
-                                    <iframe 
-                                        src={embedUrl}
-                                        title={post.title}
-                                        className="w-full h-[250px] sm:h-[300px]" 
-                                        allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture" 
-                                        allowFullScreen
-                                    ></iframe>
-                                ) : isDirectVideo ? (
-                                    <video src={post.mediaUrl} controls autoPlay className="w-full h-[250px] sm:h-[300px] bg-black" />
-                                ) : isAudio ? (
-                                     <div className="flex flex-col items-center gap-4 py-10">
-                                        <div className="w-24 h-24 rounded-2xl bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center shadow-2xl shadow-red-900/50">
-                                            <Music size={48} className="text-white opacity-90" />
-                                        </div>
-                                        <button 
-                                            onClick={() => onPlay({ title: post.title, artist: post.isAnonymous ? 'Anonymous' : post.authorName, url: post.mediaUrl })}
-                                            className="px-6 py-3 bg-white text-slate-900 rounded-full font-bold flex items-center gap-2 hover:scale-105 transition-transform shadow-lg"
-                                        >
-                                            <Play size={20} fill="currentColor" /> Play Audio
-                                        </button>
-                                        <p className="text-slate-400 text-xs mt-2">Tap to listen in background</p>
-                                     </div>
-                                ) : (
-                                    <div className="flex flex-col items-center text-slate-400 p-8 text-center">
-                                        {post.mediaUrl ? (
-                                            <>
-                                                <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mb-4">
-                                                    <ExternalLink size={32} />
-                                                </div>
-                                                <p className="mb-4 text-sm max-w-[200px] truncate">{post.mediaUrl}</p>
-                                                <a href={post.mediaUrl} target="_blank" rel="noreferrer" className="px-5 py-2.5 bg-red-600 text-white rounded-full text-sm font-bold hover:bg-red-700 transition-colors">
-                                                    Open External Link
-                                                </a>
-                                            </>
-                                        ) : (
-                                            <>
-                                                <RadioReceiver size={48} className="mb-4 opacity-50" />
-                                                <p>Text Only Broadcast</p>
-                                            </>
-                                        )}
-                                    </div>
-                                )}
-                                
-                                {isLive && (
-                                    <div className="absolute top-4 left-4 bg-red-600 text-white text-xs font-bold px-2 py-1 rounded shadow-lg flex items-center gap-1 animate-pulse z-10">
-                                        <span className="w-1.5 h-1.5 bg-white rounded-full"></span> LIVE
-                                    </div>
-                                )}
-                            </div>
-
-                            {/* Post Details */}
-                            <div className="p-5 border-b border-slate-100">
-                                 <div className="flex items-center gap-2 mb-4">
-                                    <span className={`text-[10px] font-bold px-2 py-1 rounded text-white ${post.category === 'buzz' ? 'bg-pink-500' : 'bg-slate-500'}`}>
-                                        {post.category?.toUpperCase()}
-                                    </span>
-                                    <span className="text-[10px] text-slate-400 flex items-center gap-1">
-                                        <Calendar size={10} />
-                                        {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Just Now'}
-                                    </span>
-                                 </div>
-                                 
-                                 <h2 className="text-xl font-bold text-slate-900 mb-3">{post.title}</h2>
-                                 <p className="text-slate-600 whitespace-pre-wrap leading-relaxed">{post.description}</p>
-                            </div>
-
-                            {/* Comments Section */}
-                            <div className="p-5 pb-20">
-                                <h3 className="font-bold text-slate-900 mb-4 flex items-center gap-2">
-                                    <MessageCircle size={18} /> Comments ({comments.length})
-                                </h3>
-                                
-                                <div className="space-y-4 mb-6">
-                                    {comments.length === 0 ? (
-                                        <p className="text-sm text-slate-400 italic">No comments yet. Be the first!</p>
-                                    ) : (
-                                        comments.map(comment => (
-                                            <div key={comment.id} className="flex gap-3 text-sm">
-                                                <div className="w-8 h-8 rounded-full bg-slate-100 flex items-center justify-center font-bold text-xs text-slate-600 shrink-0">
-                                                    {comment.authorName.charAt(0)}
-                                                </div>
-                                                <div className="bg-slate-50 p-3 rounded-r-xl rounded-bl-xl flex-1">
-                                                    <p className="font-bold text-slate-800 text-xs mb-1">{comment.authorName.split('_')[0]}</p>
-                                                    <p className="text-slate-600">{comment.text}</p>
-                                                </div>
+                        )}
+                        <div className="glass-card p-8 rounded-3xl border border-white/10 shadow-2xl backdrop-blur-2xl">
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                {isSignUp && (
+                                    <div className="flex flex-col items-center mb-2 animate-fade-in">
+                                        <input type="file" accept="image/*" className="hidden" ref={fileInputRef} onChange={handleImageChange} />
+                                        <div onClick={() => fileInputRef.current.click()} className="w-20 h-20 rounded-full bg-slate-800 border-2 border-dashed border-slate-600 flex items-center justify-center cursor-pointer hover:border-red-500 overflow-hidden transition-all group relative">
+                                            {profileImage ? <img src={profileImage} className="w-full h-full object-cover" /> : <Camera className="text-slate-400 group-hover:text-red-500" size={24} />}
+                                            <div className="absolute inset-0 bg-black/40 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity">
+                                                <Upload size={16} className="text-white" />
                                             </div>
-                                        ))
-                                    )}
+                                        </div>
+                                    </div>
+                                )}
+                                <div className="flex bg-slate-900/50 p-1 rounded-xl">
+                                    {['student', 'staff'].map((r) => (
+                                        <button key={r} type="button" onClick={() => setRole(r)} className={`flex-1 py-2.5 rounded-lg text-sm font-bold flex items-center justify-center gap-2 transition-all ${role === r ? (r === 'staff' ? 'bg-blue-600 text-white shadow-lg' : 'bg-red-600 text-white shadow-lg') : 'text-slate-400 hover:text-white'}`}>
+                                            {r === 'student' ? <GraduationCap size={16} /> : <Briefcase size={16} />} {r.charAt(0).toUpperCase() + r.slice(1)}
+                                        </button>
+                                    ))}
                                 </div>
-                            </div>
-                        </div>
-
-                        {/* Footer Input & Actions */}
-                        <div className="p-3 border-t border-slate-100 bg-white shrink-0">
-                            <form onSubmit={handlePostComment} className="flex gap-2 mb-3">
-                                <input 
-                                    type="text" 
-                                    value={newComment}
-                                    onChange={(e) => setNewComment(e.target.value)}
-                                    placeholder="Add a comment..."
-                                    className="flex-1 bg-slate-100 border-none rounded-full px-4 text-sm focus:ring-2 focus:ring-red-500 focus:outline-none"
-                                />
-                                <button 
-                                    type="submit" 
-                                    disabled={!newComment.trim() || isSubmitting}
-                                    className="p-2 bg-red-600 text-white rounded-full disabled:opacity-50 hover:bg-red-700 transition-colors"
-                                >
-                                    <Send size={18} />
+                                <div className="space-y-3">
+                                    <div className="relative group">
+                                        <Mail className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-red-500 transition-colors" size={18} />
+                                        <input type="email" required value={email} onChange={(e) => setEmail(e.target.value)} className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500 transition-all placeholder:text-slate-600 focus:bg-slate-900/80" placeholder="college_id@bmu.edu.in" />
+                                    </div>
+                                    <div className="relative group">
+                                        <Lock className="absolute left-3 top-3.5 text-slate-500 group-focus-within:text-red-500 transition-colors" size={18} />
+                                        <input type="password" required value={password} onChange={(e) => setPassword(e.target.value)} className="w-full bg-slate-900/50 border border-slate-700 rounded-xl py-3 pl-10 pr-4 text-sm text-white focus:outline-none focus:border-red-500 transition-all placeholder:text-slate-600 focus:bg-slate-900/80" placeholder="Password" />
+                                    </div>
+                                </div>
+                                <button type="submit" disabled={isLoading} className="w-full py-3.5 rounded-xl font-bold text-white shadow-lg shadow-red-900/20 flex items-center justify-center gap-2 bg-gradient-to-r from-red-600 to-orange-600 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50">
+                                    {isLoading ? <div className="w-5 h-5 border-2 border-white border-t-transparent rounded-full animate-spin"></div> : (isSignUp ? 'Create Profile' : 'Enter Frequency')}
                                 </button>
                             </form>
-
-                            <div className="flex items-center justify-between px-2">
-                                <button 
-                                    onClick={handleLikeClick}
-                                    className={`flex items-center gap-2 text-sm font-medium transition-colors ${isLiked ? 'text-pink-600' : 'text-slate-500 hover:text-pink-600'}`}
-                                >
-                                    <Heart size={20} className={isLiked ? 'fill-current' : ''} /> 
-                                    <span>{likeCount}</span>
+                            <div className="mt-6 text-center">
+                                <button onClick={() => setIsSignUp(!isSignUp)} className="text-xs text-slate-400 hover:text-white transition-colors underline decoration-slate-600 underline-offset-4">
+                                    {isSignUp ? "Already have an account? Login" : "New to campus? Create Profile"}
                                 </button>
-                                
-                                <div className="flex items-center gap-4">
-                                     {isOwner && (
-                                        <button onClick={() => { if(confirm('Delete post?')) { onDelete(post.id); onClose(); } }} className="p-2 text-slate-400 hover:text-red-600 transition-colors">
-                                            <Trash2 size={20} />
-                                        </button>
-                                    )}
-                                    <button onClick={handleShare} className="flex items-center gap-2 text-slate-500 hover:text-green-600 transition-colors font-medium text-sm">
-                                         <Share2 size={20} /> <span className="hidden sm:inline">Share</span>
-                                    </button>
-                                </div>
                             </div>
                         </div>
                     </div>
@@ -856,755 +515,586 @@
             );
         };
 
-        const AudioPlayer = ({ currentTrack, isPlaying, togglePlay, closePlayer }) => {
-          if (!currentTrack) return null;
-
-          return (
-            <div className="fixed bottom-0 left-0 right-0 z-[60] animate-in slide-in-from-bottom duration-300">
-              <div className="bg-slate-900/95 backdrop-blur-md border-t border-slate-800 p-3 pb-6 shadow-[0_-10px_40px_-15px_rgba(0,0,0,0.5)] text-white">
-                
-                <div className="absolute top-0 left-0 w-full h-1 bg-slate-800">
-                  <div 
-                    className={`h-full bg-gradient-to-r from-red-500 to-orange-500 transition-all duration-300 ease-linear ${isPlaying ? 'w-full animate-[width_120s_linear]' : 'w-0'}`}
-                  ></div>
+        const ScheduleView = ({ showToast }) => (
+            <div className="p-5 pb-24 animate-fade-in" key="schedule">
+                <div className="mb-6 animate-slide-up">
+                    <h2 className="text-2xl font-black text-white">Broadcast Schedule</h2>
+                    <p className="text-slate-400 text-sm">Don't miss a beat on campus.</p>
                 </div>
-
-                <div className="max-w-md mx-auto flex items-center justify-between mt-1">
-                  <div className="flex items-center gap-3 overflow-hidden">
-                    <div className={`relative w-12 h-12 rounded-lg bg-gradient-to-br from-gray-800 to-black flex items-center justify-center shadow-lg border border-slate-700 overflow-hidden group`}>
-                      {isPlaying ? <Visualizer /> : <Music size={20} className="text-slate-500" />}
-                    </div>
-                    
-                    <div className="flex-1 min-w-0">
-                      <h4 className="font-bold text-sm truncate text-white">{currentTrack.title}</h4>
-                      <p className="text-xs text-slate-400 truncate flex items-center gap-1">
-                        {currentTrack.artist} 
-                        {isPlaying && <span className="inline-block w-1.5 h-1.5 bg-green-500 rounded-full animate-pulse ml-1"></span>}
-                      </p>
-                    </div>
-                  </div>
-                  
-                  <div className="flex items-center gap-4">
-                    <button 
-                      onClick={togglePlay}
-                      className="w-12 h-12 rounded-full bg-white text-slate-900 flex items-center justify-center hover:scale-105 active:scale-95 transition-all shadow-lg shadow-white/10"
-                    >
-                      {isPlaying ? <Pause size={22} fill="currentColor" /> : <Play size={22} fill="currentColor" className="ml-1" />}
-                    </button>
-                    <button 
-                      onClick={closePlayer} 
-                      className="p-2 text-slate-500 hover:text-white hover:bg-white/10 rounded-full transition-colors"
-                    >
-                      <X size={20} />
-                    </button>
-                  </div>
+                <div className="space-y-4">
+                    {SCHEDULE_DATA.map((show, index) => (
+                        <div key={show.id} className="glass-card rounded-2xl p-4 flex items-center gap-4 hover:bg-slate-800/50 transition-colors group animate-slide-up" style={{ animationDelay: `${index * 100}ms` }}>
+                            <div className="flex flex-col items-center justify-center w-14 h-14 bg-slate-800/50 rounded-xl border border-white/5 shrink-0">
+                                <span className="text-xs font-bold text-slate-400">{show.time.split(' ')[1]}</span>
+                                <span className="text-lg font-black text-white">{show.time.split(' ')[0]}</span>
+                            </div>
+                            <div className="flex-1 min-w-0">
+                                <div className="flex items-center gap-2 mb-1">
+                                    <h3 className="font-bold text-white truncate">{show.title}</h3>
+                                    {show.live && <span className="px-1.5 py-0.5 bg-red-500/20 text-red-400 text-[10px] font-bold rounded animate-pulse">LIVE</span>}
+                                </div>
+                                <p className="text-sm text-slate-400 flex items-center gap-1.5">
+                                    <UserCircle size={12} /> {show.host}
+                                    <span className="w-1 h-1 bg-slate-600 rounded-full"></span>
+                                    <span className="text-slate-500">{show.type}</span>
+                                </p>
+                            </div>
+                            <button 
+                                onClick={() => showToast(`Reminder set for ${show.title}`)}
+                                className="p-2 rounded-full bg-slate-800/50 text-slate-400 hover:text-red-400 hover:bg-slate-800 transition-colors active:scale-90 transform"
+                            >
+                                <BellRing size={18} />
+                            </button>
+                        </div>
+                    ))}
                 </div>
-              </div>
             </div>
-          );
+        );
+
+        const SearchView = ({ posts, onPlay }) => {
+            const [query, setQuery] = useState('');
+            const filtered = posts.filter(p => 
+                p.title.toLowerCase().includes(query.toLowerCase()) || 
+                p.authorName.toLowerCase().includes(query.toLowerCase()) ||
+                p.category.toLowerCase().includes(query.toLowerCase())
+            );
+
+            return (
+                <div className="p-5 pb-24 animate-fade-in min-h-screen" key="search">
+                    <div className="sticky top-0 z-30 bg-[#020617]/80 backdrop-blur-md py-2 -mx-5 px-5 mb-4 animate-slide-up">
+                        <div className="relative group">
+                            <Search className="absolute left-4 top-3.5 text-slate-500 group-focus-within:text-red-500 transition-colors" size={18} />
+                            <input 
+                                type="text"
+                                placeholder="Search stations, hosts, vibes..."
+                                value={query}
+                                onChange={(e) => setQuery(e.target.value)}
+                                className="w-full bg-slate-900 border border-slate-800 text-white rounded-xl py-3 pl-11 pr-4 focus:outline-none focus:border-red-500/50 focus:ring-1 focus:ring-red-500/50 transition-all placeholder:text-slate-600"
+                                autoFocus
+                            />
+                        </div>
+                    </div>
+                    <div className="space-y-4">
+                        {query && filtered.length === 0 ? (
+                            <div className="text-center py-10 text-slate-500 animate-fade-in">
+                                <Ghost size={48} className="mx-auto mb-3 opacity-20" />
+                                <p>No signals found in the void.</p>
+                            </div>
+                        ) : (
+                            filtered.map((post, index) => (
+                                <div key={post.id} className="glass-card rounded-xl p-3 flex gap-3 items-center group animate-slide-up" style={{ animationDelay: `${index * 50}ms` }}>
+                                    <div 
+                                        onClick={() => onPlay({ title: post.title, artist: post.authorName, url: post.mediaUrl })}
+                                        className="w-16 h-16 rounded-lg bg-slate-800 flex items-center justify-center shrink-0 cursor-pointer relative overflow-hidden group-hover:ring-2 ring-red-500/50 transition-all"
+                                    >
+                                        {post.authorPhoto ? <img src={post.authorPhoto} className="w-full h-full object-cover opacity-60" /> : <Radio size={24} className="text-slate-500" />}
+                                        <div className="absolute inset-0 flex items-center justify-center bg-black/20 opacity-0 group-hover:opacity-100 transition-opacity">
+                                            <Play size={20} className="text-white fill-current" />
+                                        </div>
+                                    </div>
+                                    <div className="flex-1 min-w-0">
+                                        <h4 className="font-bold text-white text-sm truncate">{post.title}</h4>
+                                        <p className="text-xs text-slate-400 truncate">{post.isAnonymous ? 'Anonymous' : post.authorName}</p>
+                                        <div className="flex items-center gap-2 mt-1">
+                                            <span className="text-[10px] bg-slate-800 px-1.5 py-0.5 rounded text-slate-400">{post.category}</span>
+                                        </div>
+                                    </div>
+                                </div>
+                            ))
+                        )}
+                        {!query && (
+                            <div className="mt-8 animate-slide-up delay-200">
+                                <h3 className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-4">Browse Categories</h3>
+                                <div className="grid grid-cols-2 gap-3">
+                                    {[
+                                        { id: 'podcast', label: 'Podcasts', color: 'bg-orange-500/10 text-orange-500 border-orange-500/20' },
+                                        { id: 'music', label: 'Music', color: 'bg-purple-500/10 text-purple-500 border-purple-500/20' },
+                                        { id: 'skills', label: 'Skills', color: 'bg-blue-500/10 text-blue-500 border-blue-500/20' },
+                                        { id: 'buzz', label: 'Buzz', color: 'bg-pink-500/10 text-pink-500 border-pink-500/20' },
+                                    ].map((cat, i) => (
+                                        <button key={cat.id} onClick={() => setQuery(cat.id)} className={`p-4 rounded-xl border font-bold text-left transition-transform hover:scale-[1.02] ${cat.color} animate-slide-up`} style={{ animationDelay: `${200 + i * 100}ms` }}>
+                                            {cat.label}
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        )}
+                    </div>
+                </div>
+            );
         };
 
-        const PostCard = ({ post, onPlay, user, onDelete, onClick, isLiked, onLike }) => {
-          const [likeCount, setLikeCount] = useState(post.likes || 0);
-          const isAudio = post.category === 'podcast' || post.category === 'music';
-          const isLive = post.broadcastType === 'live';
+        const PostCard = ({ post, onPlay, onLike, isLiked, user, onComment, onDelete, onReport }) => {
+            const [animatingLike, setAnimatingLike] = useState(false);
+            const [showOptions, setShowOptions] = useState(false);
+            const isLive = post.broadcastType === 'live';
+            const isAuthor = user.uid === post.authorId;
+            const isVideo = post.mediaType === 'video';
 
-          const handleLike = async (e) => {
-            e.stopPropagation();
-            if (isLiked) return;
-            setLikeCount(prev => prev + 1);
-            onLike(post.id); // Trigger local like update
-            try {
-              const docRef = doc(db, 'bmu_radio_posts', post.id);
-              await updateDoc(docRef, { likes: increment(1) });
-            } catch (err) {
-              console.error("Like failed", err);
-              setLikeCount(prev => prev - 1);
-            }
-          };
+            const handleLikeClick = (e) => {
+                e.stopPropagation();
+                setAnimatingLike(true);
+                onLike(post.id);
+                setTimeout(() => setAnimatingLike(false), 300);
+            };
 
-          const handleShare = (e) => {
-            e.stopPropagation();
-            const text = `Check out "${post.title}" on BMU Radio!`;
-            navigator.clipboard.writeText(text);
-            alert("Link copied to clipboard!");
-          };
+            const handleShare = async (e) => {
+                e.stopPropagation();
+                const shareData = {
+                    title: `BMU Radio: ${post.title}`,
+                    text: `Check out "${post.title}" by ${post.authorName} on BMU Campus Radio!`,
+                    url: window.location.href 
+                };
+                try {
+                    if (navigator.share) {
+                        await navigator.share(shareData);
+                    } else {
+                        await navigator.clipboard.writeText(shareData.text + " " + shareData.url);
+                        alert("Link copied to clipboard!");
+                    }
+                } catch (err) { console.error(err); }
+            };
 
-          return (
-            <div 
-                onClick={onClick}
-                className={`bg-white rounded-2xl shadow-sm border ${isLive ? 'border-red-200 shadow-red-100' : 'border-slate-100'} overflow-hidden mb-5 fade-in-up transform transition-all hover:shadow-md hover:-translate-y-1 duration-300 cursor-pointer group`}
-            >
-              <div className="p-5">
-                <div className="flex items-center justify-between mb-3">
-                  <div className="flex items-center gap-3">
-                    {post.authorPhoto ? (
-                        <img src={post.authorPhoto} className="w-10 h-10 rounded-full object-cover border border-slate-100 shadow-sm" alt="Author" />
-                    ) : (
-                        <div className={`w-10 h-10 rounded-full flex items-center justify-center text-white text-sm font-bold shadow-sm ${post.isAnonymous ? 'bg-slate-800' : 'bg-gradient-to-br from-red-500 to-rose-600'}`}>
-                          {post.isAnonymous ? <Ghost size={18} /> : (post.authorName?.charAt(0) || 'U')}
+            return (
+                <div className="glass-card rounded-2xl p-0 mb-6 overflow-hidden hover:border-slate-600 transition-all transform hover:scale-[1.01] relative">
+                    <div className="p-4">
+                        <div className="flex justify-between items-start mb-3">
+                            <div className="flex items-center gap-3">
+                                <div className={`w-10 h-10 rounded-full flex items-center justify-center border border-white/10 ${post.isAnonymous ? 'bg-slate-800' : 'bg-gradient-to-tr from-indigo-600 to-violet-600'}`}>
+                                    {post.authorPhoto && !post.isAnonymous ? (
+                                        <img src={post.authorPhoto} className="w-full h-full rounded-full object-cover" />
+                                    ) : (
+                                        post.isAnonymous ? <Ghost size={18} className="text-white" /> : <span className="text-white font-bold">{post.authorName?.charAt(0)}</span>
+                                    )}
+                                </div>
+                                <div>
+                                    <div className="flex items-center gap-1.5">
+                                        <span className="text-sm font-bold text-slate-200">
+                                            {post.isAnonymous ? 'Anonymous' : post.authorName?.split('_')[0]}
+                                        </span>
+                                        {!post.isAnonymous && post.likes > 5 && (
+                                            <CheckCircle size={12} className="text-blue-400 fill-current animate-pulse" />
+                                        )}
+                                    </div>
+                                    <p className="text-[10px] text-slate-500 flex items-center gap-1">
+                                        {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString() : 'Just now'} 
+                                        <span className="w-0.5 h-0.5 bg-slate-600 rounded-full"></span>
+                                        {post.category}
+                                    </p>
+                                </div>
+                            </div>
+                            
+                            <div className="flex items-center gap-2">
+                                {isLive && (
+                                    <span className="flex items-center gap-1 bg-red-500/20 border border-red-500/30 text-red-400 text-[10px] font-bold px-2 py-0.5 rounded-full animate-pulse">
+                                        <span className="w-1.5 h-1.5 bg-red-500 rounded-full"></span> LIVE
+                                    </span>
+                                )}
+                                <div className="relative">
+                                    <button onClick={(e) => { e.stopPropagation(); setShowOptions(!showOptions); }} className="text-slate-500 hover:text-white p-1 rounded-full hover:bg-white/5 transition-colors">
+                                        <MoreVertical size={18} />
+                                    </button>
+                                    
+                                    {showOptions && (
+                                        <>
+                                            <div className="fixed inset-0 z-20" onClick={(e) => { e.stopPropagation(); setShowOptions(false); }}></div>
+                                            <div className="absolute right-0 top-8 w-40 bg-slate-900 border border-slate-700 rounded-xl shadow-xl z-30 overflow-hidden animate-fade-in">
+                                                {isAuthor && (
+                                                    <button onClick={(e) => { e.stopPropagation(); onDelete(post.id); setShowOptions(false); }} className="w-full text-left px-4 py-3 text-sm text-red-400 hover:bg-white/5 flex items-center gap-2">
+                                                        <Trash2 size={16} /> Delete
+                                                    </button>
+                                                )}
+                                                <button onClick={(e) => { e.stopPropagation(); onReport(post.id); setShowOptions(false); }} className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 flex items-center gap-2">
+                                                    <Flag size={16} /> Report
+                                                </button>
+                                                <button onClick={(e) => { handleShare(e); setShowOptions(false); }} className="w-full text-left px-4 py-3 text-sm text-slate-300 hover:bg-white/5 flex items-center gap-2 sm:hidden">
+                                                    <Share2 size={16} /> Share
+                                                </button>
+                                            </div>
+                                        </>
+                                    )}
+                                </div>
+                            </div>
                         </div>
-                    )}
-                    <div>
-                      <p className="text-sm font-bold text-slate-800 flex items-center gap-2">
-                        {post.isAnonymous ? 'Anonymous' : (post.authorName?.split('_')[0] || post.authorName)}
-                        {post.category === 'buzz' && <span className="bg-pink-100 text-pink-600 text-[10px] px-2 py-0.5 rounded-full uppercase tracking-wider">Buzz</span>}
-                      </p>
-                      <div className="flex items-center gap-2">
-                        <p className="text-xs text-slate-500 font-medium">
-                          {post.createdAt ? new Date(post.createdAt.seconds * 1000).toLocaleDateString(undefined, { month: 'short', day: 'numeric' }) : 'Just Now'}
-                        </p>
-                        {isLive && (
-                            <span className="flex items-center gap-1 bg-red-600 text-white text-[10px] font-bold px-1.5 rounded animate-pulse">
-                                <span className="w-1.5 h-1.5 bg-white rounded-full"></span> LIVE
-                            </span>
+
+                        <h3 className="text-lg font-bold text-white mb-2 leading-tight">{post.title}</h3>
+                        <p className="text-sm text-slate-400 line-clamp-2 mb-4">{post.description}</p>
+
+                        {post.mediaUrl && (
+                            isVideo ? (
+                                <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-white/5 aspect-[16/9] group hover:border-white/10 transition-colors">
+                                    <video src={post.mediaUrl} controls className="w-full h-full object-cover" />
+                                </div>
+                            ) : (
+                                <div className="relative rounded-xl overflow-hidden bg-slate-950 border border-white/5 aspect-[3/1] group hover:border-white/10 transition-colors flex items-center justify-center cursor-pointer"
+                                    onClick={() => onPlay({ title: post.title, artist: post.authorName, url: post.mediaUrl })}
+                                >
+                                    <div className="absolute inset-0 opacity-20 bg-[url('https://grainy-gradients.vercel.app/noise.svg')]"></div>
+                                    <div className="absolute inset-0 bg-gradient-to-r from-violet-900/20 to-fuchsia-900/20"></div>
+                                    <button className="relative z-10 w-12 h-12 rounded-full bg-white text-slate-950 flex items-center justify-center group-hover:scale-110 transition-transform shadow-lg shadow-white/10">
+                                        <Play size={20} fill="currentColor" className="ml-1" />
+                                    </button>
+                                </div>
+                            )
                         )}
-                      </div>
                     </div>
-                  </div>
-                  <Maximize2 size={16} className="text-slate-300 group-hover:text-red-500 transition-colors opacity-0 group-hover:opacity-100" />
-                </div>
 
-                <h3 className="font-bold text-xl mb-2 text-slate-900 leading-tight line-clamp-2">{post.title}</h3>
-                <p className="text-slate-600 text-sm mb-4 whitespace-pre-wrap leading-relaxed line-clamp-3">{post.description}</p>
-
-                {post.mediaUrl && (
-                  <div className="bg-slate-50 rounded-xl p-4 border border-slate-100 flex items-center justify-between group/media hover:bg-white hover:border-red-100 hover:shadow-sm transition-all duration-300">
-                    <div className="flex items-center gap-4 min-w-0">
-                      <div className={`w-12 h-12 rounded-full flex items-center justify-center shrink-0 ${isAudio ? 'bg-red-100 text-red-600' : 'bg-blue-100 text-blue-600'} group-hover/media:scale-110 transition-transform`}>
-                        {isAudio ? <Headphones size={24} /> : <Video size={24} />}
-                      </div>
-                      <div className="overflow-hidden">
-                        <p className="text-sm font-bold text-slate-800 truncate">
-                          {isLive ? 'Join Live Stream' : (isAudio ? 'Listen Now' : 'Watch Content')}
-                        </p>
-                        <p className="text-xs text-slate-500 truncate">{new URL(post.mediaUrl).hostname || 'Local Media'}</p>
-                      </div>
-                    </div>
-                    
-                    {isAudio && !isLive ? (
-                      <button 
-                        onClick={(e) => { e.stopPropagation(); onPlay({ title: post.title, artist: post.isAnonymous ? 'Anonymous' : post.authorName, url: post.mediaUrl }); }}
-                        className="w-10 h-10 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-lg z-10 relative"
-                      >
-                        <Play size={16} fill="currentColor" className="ml-0.5" />
-                      </button>
-                    ) : (
-                        <div className={`px-4 py-2 border text-xs font-bold rounded-full transition-colors ${isLive ? 'bg-red-600 border-red-600 text-white' : 'bg-white border-slate-200 text-slate-700'}`}>
-                            {isLive ? 'Join' : 'Open'}
+                    <div className="px-4 py-3 border-t border-white/5 bg-white/[0.02] flex items-center justify-between">
+                        <div className="flex gap-4">
+                            <button 
+                                onClick={handleLikeClick}
+                                className={`flex items-center gap-1.5 text-xs font-medium transition-all ${isLiked ? 'text-red-500' : 'text-slate-500 hover:text-slate-300'} ${animatingLike ? 'animate-pop' : ''}`}
+                            >
+                                <Heart size={16} className={isLiked ? 'fill-current' : ''} /> {post.likes || 0}
+                            </button>
+                            <button 
+                                onClick={(e) => { e.stopPropagation(); onComment(post); }}
+                                className="flex items-center gap-1.5 text-xs font-medium text-slate-500 hover:text-slate-300 transition-colors"
+                            >
+                                <MessageCircle size={16} /> Comment
+                            </button>
                         </div>
-                    )}
-                  </div>
-                )}
-
-                <div className="flex items-center gap-6 mt-5 pt-4 border-t border-slate-50">
-                  <button 
-                    onClick={handleLike}
-                    className={`flex items-center gap-2 text-sm font-medium transition-colors ${isLiked ? 'text-pink-600' : 'text-slate-400 hover:text-pink-500'}`}
-                  >
-                    <Heart size={18} className={`${isLiked ? 'fill-current animate-[ping_0.5s_cubic-bezier(0,0,0.2,1)_1]' : ''}`} /> 
-                    <span>{likeCount}</span>
-                  </button>
-                  <button className="flex items-center gap-2 text-slate-400 hover:text-blue-500 transition-colors text-sm font-medium group/action">
-                    <MessageCircle size={18} className="group-hover/action:scale-110 transition-transform" /> 
-                    <span>Comment</span>
-                  </button>
-                  <button 
-                    onClick={handleShare}
-                    className="flex items-center gap-2 text-slate-400 hover:text-green-500 transition-colors text-sm ml-auto font-medium"
-                  >
-                    <Share2 size={18} />
-                  </button>
+                        <button onClick={handleShare} className="text-slate-500 hover:text-white transition-colors">
+                            <Share2 size={16} />
+                        </button>
+                    </div>
                 </div>
-              </div>
-            </div>
-          );
+            );
         };
 
         const CreatePostModal = ({ onClose, user }) => {
-          const [title, setTitle] = useState('');
-          const [description, setDescription] = useState('');
-          const [category, setCategory] = useState('podcast');
-          const [broadcastType, setBroadcastType] = useState('recorded');
-          const [mediaType, setMediaType] = useState('upload'); 
-          const [mediaUrl, setMediaUrl] = useState('');
-          const [mediaFile, setMediaFile] = useState(null);
-          const [isAnonymous, setIsAnonymous] = useState(false);
-          const [loading, setLoading] = useState(false);
+            const [title, setTitle] = useState('');
+            const [description, setDescription] = useState('');
+            const [category, setCategory] = useState('podcast');
+            const [broadcastType, setBroadcastType] = useState('recorded');
+            const [mediaType, setMediaType] = useState('upload');
+            const [fileType, setFileType] = useState('audio'); // 'audio' or 'video'
+            const [mediaUrl, setMediaUrl] = useState('');
+            const [mediaFile, setMediaFile] = useState(null);
+            const [isAnonymous, setIsAnonymous] = useState(false);
+            const [loading, setLoading] = useState(false);
 
-          const handleSubmit = async (e) => {
-            e.preventDefault();
-            if (!title || !description) return;
+            const handleSubmit = async (e) => {
+                e.preventDefault();
+                setLoading(true);
+                try {
+                    let finalUrl = mediaUrl;
+                    if (mediaFile) {
+                        finalUrl = URL.createObjectURL(mediaFile);
+                    }
+                    await addDoc(collection(db, 'bmu_radio_posts'), {
+                        title, description, category, broadcastType,
+                        mediaUrl: finalUrl,
+                        mediaType: fileType, // Store type
+                        isAnonymous,
+                        authorId: user.uid,
+                        authorName: user.displayName,
+                        authorPhoto: user.photoURL,
+                        createdAt: serverTimestamp(),
+                        likes: 0
+                    });
+                    onClose();
+                } catch (err) { alert("Error: " + err.message); } finally { setLoading(false); }
+            };
 
-            setLoading(true);
-            try {
-              let finalMediaUrl = mediaUrl;
-              
-              if (broadcastType === 'recorded' && mediaType === 'upload' && mediaFile) {
-                  finalMediaUrl = URL.createObjectURL(mediaFile);
-                  console.log("Created local blob URL for testing:", finalMediaUrl);
-              }
+            return (
+                <div className="fixed inset-0 z-[70] flex items-end sm:items-center justify-center sm:p-4">
+                    <div className="absolute inset-0 bg-slate-950/80 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
+                    <div className="bg-[#0f172a] w-full max-w-lg rounded-t-3xl sm:rounded-3xl border border-white/10 shadow-2xl relative z-10 animate-slide-up max-h-[90vh] overflow-y-auto">
+                        <div className="p-6">
+                            <div className="flex justify-between items-center mb-6">
+                                <h2 className="text-xl font-black text-white">Start Broadcast</h2>
+                                <button onClick={onClose} className="p-2 hover:bg-white/10 rounded-full text-slate-400 hover:text-white transition-colors"><X size={20} /></button>
+                            </div>
+                            <form onSubmit={handleSubmit} className="space-y-5">
+                                <div className="flex bg-slate-900 p-1 rounded-xl">
+                                    {['recorded', 'live'].map(type => (
+                                        <button key={type} type="button" onClick={() => setBroadcastType(type)} className={`flex-1 py-2.5 rounded-lg text-sm font-bold transition-all ${broadcastType === type ? 'bg-slate-800 text-white shadow-lg border border-white/5' : 'text-slate-500'}`}>
+                                            {type === 'live' ? '🔴 Go Live' : '🎙️ Recorded'}
+                                        </button>
+                                    ))}
+                                </div>
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Title</label>
+                                    <input value={title} onChange={e => setTitle(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white focus:border-indigo-500 outline-none transition-colors focus:bg-slate-900/80" placeholder="Broadcast Title" required />
+                                </div>
+                                
+                                <div className="grid grid-cols-2 gap-4">
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Category</label>
+                                        <select value={category} onChange={e => setCategory(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm outline-none">
+                                            <option value="podcast">Podcast</option>
+                                            <option value="music">Music</option>
+                                            <option value="skills">Skills</option>
+                                            <option value="buzz">Buzz</option>
+                                        </select>
+                                    </div>
+                                    <div>
+                                        <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Type</label>
+                                        <div className="flex bg-slate-900 rounded-xl border border-slate-800">
+                                            <button type="button" onClick={() => setFileType('audio')} className={`flex-1 py-3 flex justify-center transition-colors ${fileType === 'audio' ? 'text-indigo-400 bg-slate-800 rounded-l-xl' : 'text-slate-600'}`}><FileAudio size={18} /></button>
+                                            <button type="button" onClick={() => setFileType('video')} className={`flex-1 py-3 flex justify-center transition-colors ${fileType === 'video' ? 'text-indigo-400 bg-slate-800 rounded-r-xl' : 'text-slate-600'}`}><FileVideo size={18} /></button>
+                                        </div>
+                                    </div>
+                                </div>
 
-              await addDoc(collection(db, 'bmu_radio_posts'), {
-                title,
-                description,
-                category,
-                broadcastType,
-                mediaUrl: finalMediaUrl || null,
-                isAnonymous,
-                authorId: user.uid,
-                authorName: user.displayName || 'Student',
-                authorPhoto: user.photoURL || null, // SAVE PHOTO URL HERE
-                createdAt: serverTimestamp(),
-                likes: 0
-              });
+                                <div>
+                                    <label className="text-xs font-bold text-slate-500 uppercase tracking-wider mb-2 block">Media Source</label>
+                                    <div className="flex bg-slate-900 rounded-xl border border-slate-800 mb-3">
+                                        <button type="button" onClick={() => setMediaType('link')} className={`flex-1 py-3 flex justify-center transition-colors ${mediaType === 'link' ? 'text-indigo-400 bg-slate-800 rounded-l-xl' : 'text-slate-600'}`}><LinkIcon size={18} /></button>
+                                        <button type="button" onClick={() => setMediaType('upload')} className={`flex-1 py-3 flex justify-center transition-colors ${mediaType === 'upload' ? 'text-indigo-400 bg-slate-800 rounded-r-xl' : 'text-slate-600'}`}><Upload size={18} /></button>
+                                    </div>
+                                    
+                                    {mediaType === 'link' ? (
+                                        <input type="url" value={mediaUrl} onChange={e => setMediaUrl(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white text-sm focus:border-indigo-500 outline-none" placeholder={fileType === 'video' ? "Paste Video URL..." : "Paste Audio URL..."} />
+                                    ) : (
+                                        <div className="relative border-2 border-dashed border-slate-800 rounded-xl p-6 text-center hover:border-indigo-500/50 transition-colors group">
+                                            <input type="file" accept={fileType === 'video' ? "video/*" : "audio/*"} onChange={e => setMediaFile(e.target.files[0])} className="absolute inset-0 w-full h-full opacity-0 cursor-pointer" />
+                                            <div className="text-slate-500 group-hover:text-indigo-400 transition-colors">
+                                                {fileType === 'video' ? <FileVideo size={32} className="mx-auto mb-2" /> : <FileAudio size={32} className="mx-auto mb-2" />}
+                                                <p className="text-xs font-bold">{mediaFile ? mediaFile.name : `Tap to Upload ${fileType === 'video' ? 'Video' : 'Audio'}`}</p>
+                                            </div>
+                                        </div>
+                                    )}
+                                </div>
 
-              onClose();
-            } catch (err) {
-              console.error("Error adding post:", err);
-              alert("Error saving to database: " + err.message + "\n\nIs your database permission set to allow writes?");
-            } finally {
-              setLoading(false);
-            }
-          };
-
-          return (
-            <div className="fixed inset-0 z-[60] flex items-center justify-center p-4">
-              <div className="absolute inset-0 bg-slate-900/60 backdrop-blur-sm transition-opacity" onClick={onClose}></div>
-              <div className="bg-white w-full max-w-lg rounded-3xl overflow-hidden shadow-2xl relative z-10 animate-[scaleIn_0.3s_ease-out]">
-                <style>{`@keyframes scaleIn { from { transform: scale(0.95); opacity: 0; } to { transform: scale(1); opacity: 1; } }`}</style>
-                
-                <div className="bg-gradient-to-r from-red-600 to-orange-600 p-6 flex justify-between items-center text-white">
-                  <div>
-                    <h2 className="font-bold text-xl">New Broadcast</h2>
-                    <p className="text-white/80 text-sm">Open Community Platform</p>
-                  </div>
-                  <button onClick={onClose} className="hover:bg-white/20 p-2 rounded-full transition-colors"><X size={24} /></button>
+                                <textarea value={description} onChange={e => setDescription(e.target.value)} className="w-full bg-slate-900 border border-slate-800 rounded-xl px-4 py-3 text-white h-24 resize-none outline-none focus:border-indigo-500 transition-colors focus:bg-slate-900/80" placeholder="Describe the vibe..." required />
+                                <div onClick={() => setIsAnonymous(!isAnonymous)} className="flex items-center justify-between bg-slate-900 p-4 rounded-xl border border-slate-800 cursor-pointer transition-colors hover:bg-slate-800">
+                                    <div className="flex items-center gap-3">
+                                        <Ghost size={20} className={isAnonymous ? "text-white" : "text-slate-600"} />
+                                        <span className="text-sm font-bold text-slate-300">Anonymous Mode</span>
+                                    </div>
+                                    <div className={`w-10 h-6 rounded-full relative transition-colors ${isAnonymous ? 'bg-indigo-600' : 'bg-slate-700'}`}>
+                                        <div className={`absolute top-1 left-1 w-4 h-4 bg-white rounded-full transition-transform ${isAnonymous ? 'translate-x-4' : 'translate-x-0'}`}></div>
+                                    </div>
+                                </div>
+                                <button type="submit" disabled={loading} className="w-full bg-indigo-600 hover:bg-indigo-700 text-white py-4 rounded-xl font-bold shadow-lg shadow-indigo-900/20 transition-all disabled:opacity-50 transform active:scale-95">
+                                    {loading ? "Broadcasting..." : "Go Live"}
+                                </button>
+                            </form>
+                        </div>
+                    </div>
                 </div>
-                
-                <form onSubmit={handleSubmit} className="p-6 space-y-5">
-                  
-                  <div className="flex bg-slate-100 p-1 rounded-xl">
-                     <button
-                       type="button"
-                       onClick={() => setBroadcastType('recorded')}
-                       className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all ${broadcastType === 'recorded' ? 'bg-white shadow-sm text-slate-900' : 'text-slate-500 hover:text-slate-700'}`}
-                     >
-                       Recorded
-                     </button>
-                     <button
-                       type="button"
-                       onClick={() => setBroadcastType('live')}
-                       className={`flex-1 py-2 rounded-lg text-sm font-bold transition-all flex items-center justify-center gap-1 ${broadcastType === 'live' ? 'bg-red-600 shadow-sm text-white' : 'text-slate-500 hover:text-slate-700'}`}
-                     >
-                       <span className={`w-2 h-2 rounded-full ${broadcastType === 'live' ? 'bg-white animate-pulse' : 'bg-slate-400'}`}></span>
-                       Go Live
-                     </button>
-                  </div>
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">Title</label>
-                    <input 
-                      type="text" 
-                      value={title}
-                      onChange={(e) => setTitle(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 transition-all focus:bg-white"
-                      placeholder={broadcastType === 'live' ? "e.g., Live Jam Session @ Hostel 3" : "e.g., My new track..."}
-                      required
-                    />
-                  </div>
-
-                  <div className="grid grid-cols-2 gap-4">
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">Category</label>
-                       <div className="relative">
-                         <select 
-                           value={category} 
-                           onChange={(e) => setCategory(e.target.value)}
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-sm appearance-none"
-                         >
-                           {CATEGORIES.map(cat => (
-                             <option key={cat.id} value={cat.id}>{cat.label}</option>
-                           ))}
-                         </select>
-                         <div className="absolute right-3 top-3 pointer-events-none text-slate-400"><MoreHorizontal size={16} /></div>
-                       </div>
-                     </div>
-                     
-                     <div>
-                       <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">
-                          {broadcastType === 'live' ? 'Stream Link' : 'Media Source'}
-                       </label>
-                       
-                       {broadcastType === 'live' ? (
-                          <input 
-                            type="url" 
-                            value={mediaUrl}
-                            onChange={(e) => setMediaUrl(e.target.value)}
-                            className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                            placeholder="YouTube Live / Meet..."
-                          />
-                       ) : (
-                          <div className="flex bg-slate-100 rounded-xl overflow-hidden border border-slate-200">
-                            <button type="button" onClick={() => setMediaType('link')} className={`flex-1 py-3 flex items-center justify-center ${mediaType === 'link' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-400'}`}>
-                              <LinkIcon size={18} />
-                            </button>
-                            <button type="button" onClick={() => setMediaType('upload')} className={`flex-1 py-3 flex items-center justify-center ${mediaType === 'upload' ? 'bg-white text-slate-900 font-bold shadow-sm' : 'text-slate-400'}`}>
-                              <Upload size={18} />
-                            </button>
-                          </div>
-                       )}
-                     </div>
-                  </div>
-
-                  {broadcastType === 'recorded' && (
-                    <div className="animate-[fadeIn_0.3s]">
-                       {mediaType === 'link' ? (
-                         <input 
-                           type="url" 
-                           value={mediaUrl}
-                           onChange={(e) => setMediaUrl(e.target.value)}
-                           className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 text-sm"
-                           placeholder="Paste MP3 / YouTube Link..."
-                         />
-                       ) : (
-                         <div className="relative w-full border-2 border-dashed border-slate-300 rounded-xl bg-slate-50 hover:bg-slate-100 transition-colors">
-                           <input 
-                             type="file" 
-                             accept="audio/*,video/*"
-                             onChange={(e) => setMediaFile(e.target.files[0])}
-                             className="absolute inset-0 w-full h-full opacity-0 cursor-pointer"
-                           />
-                           <div className="flex flex-col items-center justify-center py-6 text-slate-500">
-                             {mediaFile ? (
-                               <>
-                                 <FileAudio size={32} className="text-red-500 mb-2" />
-                                 <span className="text-sm font-bold text-slate-900">{mediaFile.name}</span>
-                                 <span className="text-xs">{(mediaFile.size / 1024 / 1024).toFixed(2)} MB</span>
-                               </>
-                             ) : (
-                               <>
-                                 <Upload size={32} className="mb-2" />
-                                 <span className="text-sm font-bold">Tap to Upload File</span>
-                                 <span className="text-xs">MP3, M4A, MP4 supported</span>
-                               </>
-                             )}
-                           </div>
-                         </div>
-                       )}
-                    </div>
-                  )}
-
-                  <div>
-                    <label className="block text-xs font-bold text-slate-500 uppercase mb-2 tracking-wider">Description</label>
-                    <textarea 
-                      value={description}
-                      onChange={(e) => setDescription(e.target.value)}
-                      className="w-full px-4 py-3 bg-slate-50 border border-slate-200 rounded-xl focus:outline-none focus:ring-2 focus:ring-red-500 h-24 resize-none transition-all focus:bg-white"
-                      placeholder="What's the vibe today?"
-                      required
-                    />
-                  </div>
-
-                  <div className="flex items-center justify-between bg-slate-50 p-4 rounded-xl border border-slate-100 cursor-pointer hover:bg-slate-100 transition-colors" onClick={() => setIsAnonymous(!isAnonymous)}>
-                    <div className="flex items-center gap-3">
-                      <div className={`p-2.5 rounded-full transition-colors ${isAnonymous ? 'bg-slate-800 text-white shadow-lg' : 'bg-white text-slate-400 shadow-sm'}`}>
-                        <Ghost size={20} />
-                      </div>
-                      <div>
-                        <p className={`text-sm font-bold transition-colors ${isAnonymous ? 'text-slate-900' : 'text-slate-600'}`}>Anonymous Mode</p>
-                        <p className="text-xs text-slate-500">Hide your identity</p>
-                      </div>
-                    </div>
-                    <div className={`w-12 h-7 rounded-full transition-colors relative ${isAnonymous ? 'bg-slate-900' : 'bg-slate-300'}`}>
-                       <div className={`absolute top-1 left-1 w-5 h-5 bg-white rounded-full transition-transform shadow-sm ${isAnonymous ? 'translate-x-5' : 'translate-x-0'}`}></div>
-                    </div>
-                  </div>
-
-                  <button 
-                    type="submit" 
-                    disabled={loading}
-                    className="w-full bg-gradient-to-r from-red-600 to-orange-600 text-white py-4 rounded-xl font-bold hover:shadow-lg hover:shadow-orange-200 hover:scale-[1.02] active:scale-[0.98] transition-all disabled:opacity-50 disabled:cursor-not-allowed"
-                  >
-                    {loading ? (
-                       <span className="flex items-center justify-center gap-2"><div className="w-4 h-4 border-2 border-white border-t-transparent rounded-full animate-spin"></div> Publishing...</span>
-                    ) : (broadcastType === 'live' ? 'Start Broadcast' : 'Publish Content')}
-                  </button>
-                </form>
-              </div>
-            </div>
-          );
+            );
         };
 
-        // --- Main Application ---
-
         function App() {
-          const [user, setUser] = useState(null);
-          const [loading, setLoading] = useState(true);
-          const [configError, setConfigError] = useState(null);
-          const [allPosts, setAllPosts] = useState([]);
-          const [filteredPosts, setFilteredPosts] = useState([]);
-          const [activeTab, setActiveTab] = useState('fresh'); 
-          const [showCreate, setShowCreate] = useState(false);
-          const [showInfo, setShowInfo] = useState(false);
-          const [selectedPost, setSelectedPost] = useState(null); 
-          const [currentTrack, setCurrentTrack] = useState(null);
-          const [isPlaying, setIsPlaying] = useState(false);
-          
-          // Profile & Role State
-          const [showProfileMenu, setShowProfileMenu] = useState(false);
-          const [viewFilter, setViewFilter] = useState('all'); 
-          const [likedIds, setLikedIds] = useState(new Set()); 
-          const [userRole, setUserRole] = useState(null); // 'student' or 'staff'
+            const [user, setUser] = useState(null);
+            const [activeView, setActiveView] = useState('feed');
+            const [posts, setPosts] = useState([]);
+            const [currentTrack, setCurrentTrack] = useState(null);
+            const [isPlaying, setIsPlaying] = useState(false);
+            const [showCreate, setShowCreate] = useState(false);
+            const [activeCommentPost, setActiveCommentPost] = useState(null);
+            const [loading, setLoading] = useState(true);
+            const [likedIds, setLikedIds] = useState(new Set());
+            const [toastMessage, setToastMessage] = useState(null);
+            const audioRef = useRef(new Audio());
 
-          const audioRef = useRef(new Audio());
+            const showToast = (msg) => {
+                setToastMessage(msg);
+                setTimeout(() => setToastMessage(null), 3000);
+            };
 
-          // Handle Authentication Status
-          useEffect(() => {
-            const unsubscribe = onAuthStateChanged(auth, async (u) => {
-              if (u) {
-                 setUser(u);
-                 // If already logged in, extract role from display name (e.g. "Name_student")
-                 if (u.displayName && u.displayName.includes('_')) {
-                     const parts = u.displayName.split('_');
-                     setUserRole(parts[parts.length - 1]); // Gets 'student' or 'staff'
-                 } else {
-                     // Fallback/Legacy
-                     const storedRole = localStorage.getItem('bmu_user_role');
-                     if (storedRole) setUserRole(storedRole);
-                 }
-              } else {
-                 setUser(null);
-                 setUserRole(null);
-              }
-              setLoading(false);
-            });
-            return () => unsubscribe();
-          }, []);
+            useEffect(() => {
+                onAuthStateChanged(auth, u => { setUser(u); setLoading(false); });
+                const q = query(collection(db, 'bmu_radio_posts'), orderBy('createdAt', 'desc'));
+                const unsub = onSnapshot(q, snap => setPosts(snap.docs.map(d => ({ id: d.id, ...d.data() }))));
+                const savedLikes = localStorage.getItem('bmu_likes');
+                if(savedLikes) setLikedIds(new Set(JSON.parse(savedLikes)));
+                return () => unsub();
+            }, []);
 
-          // Handle Login Success from LoginSelection
-          const handleLoginSuccess = (userObj, role) => {
-              setUser(userObj);
-              setUserRole(role);
-              localStorage.setItem('bmu_user_role', role);
-          };
-
-          // Initialize Likes from Local Storage
-          useEffect(() => {
-              const storedLikes = localStorage.getItem('bmu_liked_posts');
-              if (storedLikes) {
-                  setLikedIds(new Set(JSON.parse(storedLikes)));
-              }
-          }, []);
-
-          const toggleLikeLocal = (postId) => {
-              const newLikes = new Set(likedIds);
-              newLikes.add(postId);
-              setLikedIds(newLikes);
-              localStorage.setItem('bmu_liked_posts', JSON.stringify([...newLikes]));
-          };
-
-          useEffect(() => {
-            if (!user) return;
-            const q = query(collection(db, 'bmu_radio_posts'));
-            const unsubscribe = onSnapshot(q, (snapshot) => {
-              const fetched = snapshot.docs.map(doc => ({ id: doc.id, ...doc.data() }));
-              setAllPosts(fetched);
-            }, (error) => {
-                console.error("Snapshot Error:", error);
-                if (error.code === 'permission-denied') {
-                    setConfigError('permission');
-                }
-            });
-            return () => unsubscribe();
-          }, [user]);
-
-          useEffect(() => {
-            let result = [...allPosts];
-            
-            // 1. Apply View Filter (Profile Menu Overrides)
-            if (viewFilter === 'mine') {
-                result = result.filter(p => p.authorId === user?.uid);
-            } else if (viewFilter === 'liked') {
-                result = result.filter(p => likedIds.has(p.id));
-            } else {
-                // 2. If 'all', use standard Tab Filter
-                if (activeTab === 'trending') {
-                  result.sort((a, b) => (b.likes || 0) - (a.likes || 0));
-                } else if (activeTab === 'confessions') {
-                  result = result.filter(p => p.category === 'buzz' || p.isAnonymous);
-                } else if (activeTab === 'skills') {
-                  result = result.filter(p => p.category === 'skills');
+            useEffect(() => {
+                if (currentTrack) {
+                    const audio = audioRef.current;
+                    audio.src = currentTrack.url;
+                    setIsPlaying(false);
+                    const playPromise = audio.play();
+                    if (playPromise !== undefined) {
+                        playPromise
+                            .then(() => setIsPlaying(true))
+                            .catch(e => { console.error("Playback Error:", e); setIsPlaying(false); });
+                    }
                 } else {
-                   // Default Sort: Live first, then date
-                   result.sort((a, b) => {
-                        if (a.broadcastType === 'live' && b.broadcastType !== 'live') return -1;
-                        if (a.broadcastType !== 'live' && b.broadcastType === 'live') return 1;
-                        return (b.createdAt?.seconds || 0) - (a.createdAt?.seconds || 0)
-                    });
+                    audioRef.current.pause();
+                    setIsPlaying(false);
                 }
-            }
+            }, [currentTrack]);
 
-            setFilteredPosts(result);
-          }, [allPosts, activeTab, viewFilter, likedIds, user]);
+            const togglePlay = () => {
+                if (isPlaying) audioRef.current.pause();
+                else audioRef.current.play();
+                setIsPlaying(!isPlaying);
+            };
 
-          useEffect(() => {
-            if (currentTrack) {
-              audioRef.current.src = currentTrack.url;
-              audioRef.current.play().then(() => setIsPlaying(true)).catch(e => {
-                  console.log("Audio play failed", e);
-                  setIsPlaying(false);
-                  alert("Could not play audio track. The link might be broken or inaccessible.");
-              });
-            } else {
-              audioRef.current.pause();
-              setIsPlaying(false);
-            }
-          }, [currentTrack]);
+            // Optimistic Like
+            const handleLike = async (postId) => {
+                if(likedIds.has(postId)) return;
+                
+                // Optimistic update local state
+                const newLikes = new Set(likedIds).add(postId);
+                setLikedIds(newLikes);
+                localStorage.setItem('bmu_likes', JSON.stringify([...newLikes]));
+                
+                // Server update
+                try {
+                    await updateDoc(doc(db, 'bmu_radio_posts', postId), { likes: increment(1) });
+                } catch(e) {
+                    console.error("Like failed", e);
+                    // Revert if failed (optional, usually Firestore offline persistence handles this)
+                }
+            };
 
-          const togglePlay = () => {
-            if (isPlaying) audioRef.current.pause();
-            else {
-                audioRef.current.play().catch(e => {
-                    console.error(e);
-                    alert("Playback failed.");
-                });
-            }
-            setIsPlaying(!isPlaying);
-          };
+            const handleDeletePost = async (postId) => {
+                if(confirm("Are you sure you want to delete this broadcast?")) {
+                    try {
+                        await deleteDoc(doc(db, 'bmu_radio_posts', postId));
+                        showToast("Broadcast deleted.");
+                    } catch(err) { alert("Error deleting post"); }
+                }
+            };
 
-          const handleDelete = async (id) => {
-            if (confirm("Are you sure you want to delete this broadcast?")) {
-              await deleteDoc(doc(db, 'bmu_radio_posts', id));
-            }
-          };
+            const handleReportPost = async (postId) => {
+                showToast("Reported to admin for review.");
+            };
 
-          if (loading) return <LoadingScreen />;
-          if (configError) return <ConfigErrorScreen errorType={configError} />;
-          
-          // Show Login Selection if user is not authenticated OR hasn't selected a role
-          if (!user) {
-              return <LoginSelection onLogin={handleLoginSuccess} error={configError} />;
-          }
+            const handleLoginSuccess = (userObj, role) => {
+                setUser(userObj);
+                localStorage.setItem('bmu_user_role', role);
+            };
 
-          return (
-            <div className="min-h-screen bg-slate-50 font-sans pb-32">
-              <Styles />
-              <header className="sticky top-0 z-40 glass-panel border-b border-slate-200/50 px-5 py-4 flex items-center justify-between transition-all">
-                <div className="flex items-center gap-3">
-                  <div className="w-9 h-9 rounded-xl bg-gradient-to-br from-red-600 to-orange-600 flex items-center justify-center text-white shadow-red-200 shadow-lg">
-                    <Radio size={20} className="animate-[pulse_3s_infinite]" />
-                  </div>
-                  <h1 className="font-extrabold text-xl tracking-tight text-slate-900">BMU<span className="text-red-600">RADIO</span></h1>
-                </div>
-                <div className="flex items-center gap-3 relative">
-                   <button onClick={() => setShowInfo(true)} className="p-2 rounded-full bg-slate-100 text-slate-500 hover:bg-slate-200 transition-colors">
-                      <Info size={18} />
-                   </button>
-                  <div className="hidden md:flex items-center gap-2 bg-slate-100/80 px-4 py-1.5 rounded-full border border-slate-200">
-                    <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
-                    <span className="text-xs font-bold text-slate-600 tracking-wide">LIVE</span>
-                  </div>
-                  
-                  {/* Profile Menu Trigger */}
-                  <button 
-                    onClick={() => setShowProfileMenu(!showProfileMenu)}
-                    className="w-9 h-9 rounded-full bg-slate-100 flex items-center justify-center text-slate-600 hover:bg-slate-200 transition-colors"
-                  >
-                     {user.photoURL ? (
-                         <img src={user.photoURL} className="w-full h-full object-cover rounded-full" alt="User" />
-                     ) : (
-                         <User size={18} />
-                     )}
-                  </button>
+            if (loading) return <div className="h-screen bg-[#020617] flex items-center justify-center text-indigo-500"><Radio className="animate-bounce" size={40} /></div>;
 
-                  {/* Profile Menu Dropdown */}
-                  {showProfileMenu && (
-                      <ProfileMenu 
-                        user={user} 
-                        role={userRole}
-                        onClose={() => setShowProfileMenu(false)}
-                        onViewChange={(view) => {
-                            setViewFilter(view);
-                            setActiveTab('fresh'); // Reset tab highlights
-                        }}
-                        onCreateClick={() => setShowCreate(true)}
-                      />
-                  )}
-                </div>
-              </header>
+            if (!user) return (
+                <>
+                    <Background3D />
+                    <LoginSelection onLogin={handleLoginSuccess} error={null} />
+                </>
+            );
 
-              <div className="bg-slate-900 text-white p-6 pb-16 rounded-b-[2.5rem] shadow-2xl shadow-slate-900/20 mb-[-3rem] relative z-0 overflow-hidden">
-                <div className="absolute top-[-50%] right-[-10%] w-96 h-96 bg-red-600/20 rounded-full blur-3xl animate-pulse"></div>
-                <div className="absolute bottom-[-10%] left-[-10%] w-64 h-64 bg-blue-600/20 rounded-full blur-3xl"></div>
-                <div className="relative z-10">
-                  <div className="flex justify-between items-end mb-6">
-                    <div>
-                      <p className="text-slate-400 text-sm font-medium mb-1">
-                        {viewFilter === 'mine' ? 'My Broadcasts' : 
-                         viewFilter === 'liked' ? 'Liked Stations' : 
-                         'Welcome Back'}
-                      </p>
-                      <h2 className="text-3xl font-black bg-clip-text text-transparent bg-gradient-to-r from-white to-slate-400">
-                        {user?.displayName ? user.displayName.split('_')[0] : 'Student'}
-                      </h2>
-                    </div>
-                    <div className="text-right hidden sm:block">
-                      <p className="text-3xl font-black text-white">{filteredPosts.length}</p>
-                      <p className="text-xs text-slate-400 uppercase tracking-wider font-bold">Broadcasts</p>
-                    </div>
-                  </div>
-                  
-                  {/* Only show categories on main feed */}
-                  {viewFilter === 'all' && (
-                      <div className="flex gap-4 overflow-x-auto pb-4 no-scrollbar items-start snap-x">
-                        {CATEGORIES.map((cat, i) => (
-                          <button 
-                            key={cat.id} 
-                            onClick={() => setActiveTab(cat.id === 'buzz' ? 'confessions' : cat.id === 'skills' ? 'skills' : 'fresh')}
-                            className="group flex flex-col items-center gap-3 min-w-[76px] snap-center"
-                            style={{ animationDelay: `${i * 100}ms` }}
-                          >
-                            <div className={`w-16 h-16 rounded-2xl bg-gradient-to-br ${cat.color} flex items-center justify-center shadow-lg ${cat.shadow} transform transition-all duration-300 group-hover:scale-110 group-hover:rotate-3`}>
-                              <cat.icon size={28} className="text-white drop-shadow-md" />
+            return (
+                <div className="min-h-screen pb-24 relative overflow-hidden">
+                    <Background3D />
+                    
+                    {toastMessage && <Toast message={toastMessage} onClose={() => setToastMessage(null)} />}
+
+                    <header className="sticky top-0 z-40 bg-[#020617]/80 backdrop-blur-xl border-b border-white/5 px-5 py-4 flex justify-between items-center animate-slide-up">
+                        <div className="flex items-center gap-3">
+                            <div className="w-8 h-8 rounded-lg bg-gradient-to-tr from-indigo-600 to-violet-600 flex items-center justify-center text-white shadow-lg shadow-indigo-500/20">
+                                <Radio size={16} />
                             </div>
-                            <span className="text-xs font-semibold text-slate-300 group-hover:text-white transition-colors">{cat.label}</span>
-                          </button>
-                        ))}
-                      </div>
-                  )}
-                </div>
-              </div>
-
-              <main className="max-w-xl mx-auto px-5 relative z-10">
-                {/* Only show live banner on main feed */}
-                {viewFilter === 'all' && (
-                    <div className="bg-white rounded-2xl p-5 shadow-lg shadow-slate-200/50 border border-slate-100 mb-8 flex items-center justify-between transform transition-transform hover:scale-[1.01]">
-                      <div className="flex items-center gap-4">
-                        <div className="w-14 h-14 bg-red-50 rounded-xl flex items-center justify-center text-red-600 relative overflow-hidden">
-                           <div className="absolute bottom-0 left-0 w-full h-1 bg-red-200">
-                              <div className="h-full bg-red-500 w-2/3 animate-[width_2s_ease-in-out_infinite]"></div>
-                           </div>
-                           <Radio size={28} />
+                            <span className="font-bold text-lg text-white tracking-tight">BMU<span className="text-indigo-500">FM</span></span>
                         </div>
-                        <div>
-                          <div className="flex items-center gap-2 mb-0.5">
-                             <span className="inline-block w-2 h-2 rounded-full bg-red-500 animate-pulse"></span>
-                             <p className="text-[10px] font-bold text-red-600 uppercase tracking-widest">Live On Air</p>
-                          </div>
-                          <h3 className="font-bold text-slate-900 text-lg">Campus Beats</h3>
+                        <div className="flex items-center gap-3">
+                            <button onClick={async () => { await signOut(auth); window.location.reload(); }} className="w-8 h-8 rounded-full bg-slate-800 flex items-center justify-center text-slate-400 hover:text-white hover:bg-slate-700 transition-colors">
+                                <LogOut size={14} />
+                            </button>
+                            <div className="w-8 h-8 rounded-full bg-indigo-600 flex items-center justify-center text-xs font-bold text-white border-2 border-[#020617]">
+                                {user.displayName?.charAt(0)}
+                            </div>
                         </div>
-                      </div>
-                      <button 
-                        onClick={() => setCurrentTrack(SAMPLE_TRACKS[0])}
-                        className="w-12 h-12 rounded-full bg-slate-900 text-white flex items-center justify-center hover:bg-red-600 transition-colors shadow-xl shadow-slate-900/20"
-                      >
-                        <Play size={20} fill="currentColor" className="ml-1" />
-                      </button>
-                    </div>
-                )}
+                    </header>
 
-                {/* Filter Tabs - Only show on Main Feed */}
-                {viewFilter === 'all' && (
-                    <div className="flex items-center gap-2 mb-6 bg-white/50 backdrop-blur-sm p-1 rounded-xl border border-slate-200 sticky top-[72px] z-30 shadow-sm overflow-x-auto no-scrollbar">
-                      {[
-                        { id: 'fresh', label: 'Community Feed', icon: Zap },
-                        { id: 'trending', label: 'Trending', icon: Flame },
-                        { id: 'confessions', label: 'Confessions', icon: Ghost },
-                        { id: 'skills', label: 'Skills', icon: Video },
-                      ].map(tab => (
-                        <button 
-                          key={tab.id}
-                          onClick={() => setActiveTab(tab.id)}
-                          className={`flex-1 flex items-center justify-center gap-2 py-2.5 px-3 rounded-lg text-xs font-bold transition-all whitespace-nowrap ${activeTab === tab.id ? 'bg-slate-900 text-white shadow-md' : 'text-slate-500 hover:bg-white hover:text-slate-900'}`}
-                        >
-                          <tab.icon size={14} />
-                          {tab.label}
-                        </button>
-                      ))}
-                    </div>
-                )}
+                    {activeView === 'feed' && (
+                        <main className="px-5 py-6 max-w-xl mx-auto animate-fade-in" key="feed">
+                            <div className="mb-8 animate-slide-up">
+                                <h2 className="text-2xl font-black text-white mb-1">On Air Today</h2>
+                                <p className="text-slate-400 text-sm">Discover what's trending on campus.</p>
+                            </div>
+                            <div className="bg-gradient-to-r from-red-900/40 to-orange-900/40 border border-red-500/20 rounded-2xl p-4 mb-8 flex items-center justify-between relative overflow-hidden group animate-slide-up delay-100">
+                                <div className="absolute inset-0 bg-red-600/5 group-hover:bg-red-600/10 transition-colors"></div>
+                                <div className="relative z-10 flex items-center gap-4">
+                                    <div className="w-12 h-12 rounded-full bg-red-600 flex items-center justify-center text-white animate-pulse shadow-lg shadow-red-500/30">
+                                        <Radio size={20} />
+                                    </div>
+                                    <div>
+                                        <div className="flex items-center gap-2 mb-0.5">
+                                            <span className="text-[10px] font-bold bg-red-600 text-white px-1.5 rounded uppercase tracking-wider">Live</span>
+                                            <span className="text-xs font-bold text-red-200">Campus Beats</span>
+                                        </div>
+                                        <p className="text-sm text-red-100 font-medium">Hosting the evening jam</p>
+                                    </div>
+                                </div>
+                                <button className="relative z-10 bg-white text-red-900 px-4 py-2 rounded-full text-xs font-bold hover:scale-105 transition-transform shadow-lg">
+                                    Listen
+                                </button>
+                            </div>
+                            {posts.length === 0 ? (
+                                <div className="text-center py-20 opacity-50 animate-fade-in">
+                                    <div className="w-16 h-16 bg-slate-800 rounded-full flex items-center justify-center mx-auto mb-4">
+                                        <Radio size={32} className="text-slate-500" />
+                                    </div>
+                                    <p className="text-slate-500">No transmissions yet.</p>
+                                </div>
+                            ) : (
+                                <div className="space-y-6">
+                                    {posts.map((post, index) => (
+                                        <div key={post.id} className="animate-slide-up" style={{ animationDelay: `${200 + index * 100}ms` }}>
+                                            <PostCard 
+                                                post={post} 
+                                                onPlay={(t) => setCurrentTrack(t)}
+                                                onLike={handleLike}
+                                                isLiked={likedIds.has(post.id)}
+                                                user={user}
+                                                onComment={() => setActiveCommentPost(post)}
+                                                onDelete={handleDeletePost}
+                                                onReport={handleReportPost}
+                                            />
+                                        </div>
+                                    ))}
+                                </div>
+                            )}
+                        </main>
+                    )}
 
-                {/* Back to Feed Button if not on main view */}
-                {viewFilter !== 'all' && (
-                    <button 
-                        onClick={() => setViewFilter('all')}
-                        className="mb-6 flex items-center gap-2 text-slate-500 hover:text-slate-800 font-bold text-sm bg-white px-4 py-2 rounded-lg shadow-sm border border-slate-200"
-                    >
-                        &larr; Back to Global Feed
-                    </button>
-                )}
+                    {activeView === 'search' && <SearchView posts={posts} onPlay={(t) => setCurrentTrack(t)} />}
+                    {activeView === 'schedule' && <ScheduleView showToast={showToast} />}
+                    {activeView === 'profile' && (
+                        <div className="p-6 text-center pt-20 animate-fade-in" key="profile">
+                            <div className="w-24 h-24 bg-indigo-600 rounded-full mx-auto mb-4 flex items-center justify-center text-3xl font-bold text-white shadow-2xl shadow-indigo-500/30 border-4 border-[#020617] animate-slide-up">
+                                {user.displayName?.charAt(0)}
+                            </div>
+                            <h2 className="text-2xl font-black text-white animate-slide-up delay-100">{user.displayName}</h2>
+                            <p className="text-slate-400 mb-8 animate-slide-up delay-200">Campus Broadcaster</p>
+                            <div className="grid grid-cols-2 gap-4 max-w-sm mx-auto animate-slide-up delay-300">
+                                <div className="glass-card p-4 rounded-2xl">
+                                    <span className="block text-2xl font-black text-white">{posts.filter(p => p.authorId === user.uid).length}</span>
+                                    <span className="text-xs text-slate-500 uppercase font-bold">Posts</span>
+                                </div>
+                                <div className="glass-card p-4 rounded-2xl">
+                                    <span className="block text-2xl font-black text-white">{likedIds.size}</span>
+                                    <span className="text-xs text-slate-500 uppercase font-bold">Liked</span>
+                                </div>
+                            </div>
+                        </div>
+                    )}
 
-                <div className="space-y-6 min-h-[300px]">
-                  {filteredPosts.length === 0 ? (
-                    <div className="text-center py-16 opacity-60 flex flex-col items-center animate-in fade-in zoom-in duration-500">
-                      <div className="w-20 h-20 bg-slate-200 rounded-full flex items-center justify-center mb-4">
-                        <Radio size={32} className="text-slate-400" />
-                      </div>
-                      <p className="font-bold text-slate-600 text-lg">No signals found</p>
-                      <p className="text-slate-400 text-sm">
-                        {viewFilter === 'mine' ? "You haven't posted yet." : 
-                         viewFilter === 'liked' ? "You haven't liked any posts yet." : 
-                         "Be the first to broadcast on this frequency!"}
-                      </p>
-                    </div>
-                  ) : (
-                    filteredPosts.map((post, index) => (
-                      <div key={post.id} style={{ animationDelay: `${index * 100}ms` }} className="fade-in-up">
-                        <PostCard 
-                          post={post} 
-                          onPlay={(trackInfo) => setCurrentTrack(trackInfo)}
-                          onClick={() => setSelectedPost(post)}
-                          user={user}
-                          onDelete={handleDelete}
-                          isLiked={likedIds.has(post.id)}
-                          onLike={toggleLikeLocal}
+                    {showCreate && <CreatePostModal user={user} onClose={() => setShowCreate(false)} />}
+                    {activeCommentPost && (
+                        <CommentSheet 
+                            post={activeCommentPost} 
+                            user={user} 
+                            onClose={() => setActiveCommentPost(null)} 
                         />
-                      </div>
-                    ))
-                  )}
+                    )}
+                    
+                    <Footer />
+
+                    <MiniPlayer 
+                        currentTrack={currentTrack} 
+                        isPlaying={isPlaying} 
+                        togglePlay={togglePlay} 
+                        closePlayer={() => { audioRef.current.pause(); setCurrentTrack(null); }}
+                    />
+
+                    <NavigationBar 
+                        activeView={activeView} 
+                        onViewChange={setActiveView} 
+                        onCreateClick={() => setShowCreate(true)} 
+                    />
                 </div>
-              </main>
-
-              <button 
-                onClick={() => setShowCreate(true)}
-                className="fixed bottom-24 right-6 w-16 h-16 bg-gradient-to-br from-red-600 to-orange-600 text-white rounded-full shadow-2xl shadow-red-500/40 flex items-center justify-center hover:scale-110 active:scale-95 transition-all z-40 group"
-              >
-                <Plus size={32} className="group-hover:rotate-90 transition-transform duration-300" />
-              </button>
-
-              {showCreate && (
-                <CreatePostModal 
-                  user={user} 
-                  onClose={() => setShowCreate(false)} 
-                />
-              )}
-              
-              {showInfo && <InfoModal onClose={() => setShowInfo(false)} />}
-              
-              {selectedPost && (
-                  <PostDetailModal 
-                    post={selectedPost} 
-                    user={user}
-                    onClose={() => setSelectedPost(null)}
-                    onDelete={handleDelete}
-                    onPlay={(trackInfo) => setCurrentTrack(trackInfo)}
-                    isLiked={likedIds.has(selectedPost.id)}
-                    onLike={toggleLikeLocal}
-                  />
-              )}
-
-              <AudioPlayer 
-                currentTrack={currentTrack} 
-                isPlaying={isPlaying} 
-                togglePlay={togglePlay}
-                closePlayer={() => {
-                  audioRef.current.pause();
-                  setCurrentTrack(null);
-                }}
-              />
-            </div>
-          );
+            );
         }
 
         const root = createRoot(document.getElementById('root'));
